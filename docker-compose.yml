@@ -1,0 +1,32 @@
+services:
+  workbench:
+    build: .
+    image: workbench:latest
+    container_name: ${WB_NAME:-workbench}
+    ports:
+      # 左边是宿主机端口，改 .env 里的 WB_HOST_PORT 即可（例：8788）
+      - "${WB_HOST_PORT:-8787}:8787"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      # 管理员密码：首次启动写入数据库，之后改这里无效（用页面「修改密码」）
+      WB_ADMIN_PASS: ${WB_ADMIN_PASS:?请先在 .env 里设置 WB_ADMIN_PASS（可运行 ./install.sh 自动生成）}
+      WB_PORT: "8787"
+      # 1 = 首次启动导入演示数据（只看效果用，生产建议 0）
+      WB_SEED: ${WB_SEED:-0}
+      # 1 = 开启模拟身份登录（仅本地联调，生产必须 0）
+      WB_DEV_LOGIN: ${WB_DEV_LOGIN:-0}
+    volumes:
+      # 所有数据（SQLite）都在这个目录：备份=拷走，迁移=换机器挂回来
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8787/api/ping',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

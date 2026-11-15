@@ -1,0 +1,1007 @@
+{
+  "151WfQT8N0hn6nsOMnmMqh": {
+    "title": "TASK",
+    "properties": [
+      {
+        "id": "ihVZvLns",
+        "name": "任务名称",
+        "type": "text"
+      },
+      {
+        "id": "RrOMJk3F",
+        "name": "优先级",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "a1b2c3d4e5f60718",
+              "text": "高",
+              "style": 18
+            },
+            {
+              "id": "b2c3d4e5f6a70829",
+              "text": "中",
+              "style": 23
+            },
+            {
+              "id": "c3d4e5f6a7b8093a",
+              "text": "低",
+              "style": 11
+            }
+          ]
+        }
+      },
+      {
+        "id": "MJKp3ye4",
+        "name": "截止时间",
+        "type": "date"
+      },
+      {
+        "id": "VGDC2Vpk",
+        "name": "负责人",
+        "type": "text"
+      },
+      {
+        "id": "MclS9MRG",
+        "name": "状态",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "d4e5f6a7b8c90041",
+              "text": "待处理",
+              "style": 12
+            },
+            {
+              "id": "e5f6a7b8c9d01152",
+              "text": "进行中",
+              "style": 9
+            },
+            {
+              "id": "f6a7b8c9d0e12263",
+              "text": "等待回复",
+              "style": 11
+            },
+            {
+              "id": "a7b8c9d0e1f23374",
+              "text": "已完成",
+              "style": 5
+            }
+          ]
+        }
+      },
+      {
+        "id": "511Dt7hR",
+        "name": "所属项目",
+        "type": "text"
+      },
+      {
+        "id": "xXym7WVK",
+        "name": "处理链接",
+        "type": "text"
+      },
+      {
+        "id": "ThcNXxr0",
+        "name": "来源应用",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "Fw53mLX6pCdH",
+              "text": "钉钉",
+              "style": 21
+            },
+            {
+              "id": "8cIBetC8U5fK",
+              "text": "企业微信",
+              "style": 10
+            },
+            {
+              "id": "RU4fDUqWmHH2",
+              "text": "飞书",
+              "style": 15
+            },
+            {
+              "id": "b9CvtfJse37q",
+              "text": "邮箱",
+              "style": 21
+            },
+            {
+              "id": "T9yiOozVIxb5",
+              "text": "手动",
+              "style": 16
+            },
+            {
+              "id": "VJ8YhlJ4DqEH",
+              "text": "GitLab",
+              "style": 10
+            },
+            {
+              "id": "hTlPWg30p1p9",
+              "text": "Gitea",
+              "style": 21
+            },
+            {
+              "id": "zD8jmN1uhc2c",
+              "text": "禅道",
+              "style": 15
+            },
+            {
+              "id": "YVlvTnVz4ou3",
+              "text": "用友",
+              "style": 16
+            },
+            {
+              "id": "LqI33OvKTwkK",
+              "text": "GitHub",
+              "style": 21
+            }
+          ]
+        }
+      },
+      {
+        "id": "gnjqP9PkX2",
+        "name": "钉钉任务ID",
+        "type": "text"
+      }
+    ]
+  },
+  "KHYNKWUOMqxe4rqJJFOl6t": {
+    "title": "SCHED",
+    "properties": [
+      {
+        "id": "oE08RMn9",
+        "name": "日程事项",
+        "type": "text"
+      },
+      {
+        "id": "S9slLfWD",
+        "name": "开始时间",
+        "type": "text"
+      },
+      {
+        "id": "hdUZvHPA",
+        "name": "时长",
+        "type": "text"
+      },
+      {
+        "id": "kf8DRGM6",
+        "name": "说明",
+        "type": "text"
+      },
+      {
+        "id": "v6XcQgXX",
+        "name": "来源应用",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "SKQWoRAtQDRN",
+              "text": "钉钉",
+              "style": 7
+            },
+            {
+              "id": "pgtgI4pwgPzl",
+              "text": "企业微信",
+              "style": 9
+            },
+            {
+              "id": "YZlApVOv2eSD",
+              "text": "飞书",
+              "style": 2
+            },
+            {
+              "id": "gmCellWmRAIm",
+              "text": "邮箱",
+              "style": 16
+            },
+            {
+              "id": "HFfEk1L60Gfy",
+              "text": "手动",
+              "style": 8
+            },
+            {
+              "id": "3ib42RupDDKM",
+              "text": "GitLab",
+              "style": 10
+            },
+            {
+              "id": "utDzp5lrFMS3",
+              "text": "Gitea",
+              "style": 21
+            },
+            {
+              "id": "X8TXSQsFOzuh",
+              "text": "禅道",
+              "style": 15
+            },
+            {
+              "id": "FqpOEcE1xlth",
+              "text": "用友",
+              "style": 16
+            },
+            {
+              "id": "rJqZGctMst36",
+              "text": "GitHub",
+              "style": 21
+            }
+          ]
+        }
+      },
+      {
+        "id": "EvId22",
+        "name": "事件ID",
+        "type": "text"
+      }
+    ]
+  },
+  "DiQ0qiGK3ZejC7g3bc1NDk": {
+    "title": "WAIT",
+    "properties": [
+      {
+        "id": "8WDRc3hj",
+        "name": "事项名称",
+        "type": "text"
+      },
+      {
+        "id": "qM2mYL7u",
+        "name": "来源",
+        "type": "text"
+      },
+      {
+        "id": "cSClCk3J",
+        "name": "发起时间",
+        "type": "date"
+      },
+      {
+        "id": "aTp7nID3",
+        "name": "状态",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "w8a1b2c3d4e5f607",
+              "text": "等待回复",
+              "style": 24
+            },
+            {
+              "id": "x9b2c3d4e5f6a708",
+              "text": "已回复",
+              "style": 4
+            },
+            {
+              "id": "y0c3d4e5f6a7b809",
+              "text": "已关闭",
+              "style": 26
+            }
+          ]
+        }
+      },
+      {
+        "id": "KReyNOWm",
+        "name": "备注",
+        "type": "text"
+      },
+      {
+        "id": "Sbp9Z9Bz",
+        "name": "处理链接",
+        "type": "text"
+      },
+      {
+        "id": "M36ZdDrhix",
+        "name": "消息ID",
+        "type": "text"
+      },
+      {
+        "id": "ttDddG7sNV",
+        "name": "群名称",
+        "type": "text"
+      },
+      {
+        "id": "FWKWM8p0Ks",
+        "name": "发送人",
+        "type": "text"
+      }
+    ]
+  },
+  "8rrQVoUCjp1jWnVlVLkWIm": {
+    "title": "FILES",
+    "properties": [
+      {
+        "id": "f5OTU4SN",
+        "name": "文件名称",
+        "type": "text"
+      },
+      {
+        "id": "X3vxyBG3",
+        "name": "类型",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "kb文件夹",
+              "text": "文件夹",
+              "style": 10
+            },
+            {
+              "id": "kb知识库",
+              "text": "知识库",
+              "style": 18
+            },
+            {
+              "id": "f1a2b3c4d5e6f708",
+              "text": "文档",
+              "style": 16
+            },
+            {
+              "id": "f2b3c4d5e6f7a809",
+              "text": "表格",
+              "style": 5
+            },
+            {
+              "id": "f3c4d5e6f7a8b901",
+              "text": "PDF",
+              "style": 21
+            },
+            {
+              "id": "f4d5e6f7a8b9c012",
+              "text": "演示文稿",
+              "style": 14
+            },
+            {
+              "id": "f5e6f7a8b9c0d123",
+              "text": "图片",
+              "style": 3
+            },
+            {
+              "id": "f6f7a8b9c0d1e234",
+              "text": "其他",
+              "style": 5
+            }
+          ]
+        }
+      },
+      {
+        "id": "5icX5zu5",
+        "name": "所属项目",
+        "type": "text"
+      },
+      {
+        "id": "oN9gKXv4",
+        "name": "更新时间",
+        "type": "date"
+      },
+      {
+        "id": "OIhmFuS2",
+        "name": "大小",
+        "type": "text"
+      },
+      {
+        "id": "zUqP2WCz",
+        "name": "更新人",
+        "type": "text"
+      },
+      {
+        "id": "VGZN1Hw8",
+        "name": "链接",
+        "type": "url"
+      },
+      {
+        "id": "Q9brb5zl",
+        "name": "来源应用",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "65TY442hCsIu",
+              "text": "钉钉",
+              "style": 18
+            },
+            {
+              "id": "M2kzI6rAOqrM",
+              "text": "企业微信",
+              "style": 7
+            },
+            {
+              "id": "TEpXc1mIEibE",
+              "text": "飞书",
+              "style": 18
+            },
+            {
+              "id": "ngjVAXfbOhwZ",
+              "text": "邮箱",
+              "style": 9
+            },
+            {
+              "id": "XdYBnMxjvOM2",
+              "text": "手动",
+              "style": 12
+            },
+            {
+              "id": "QnRRpPDEXOfB",
+              "text": "GitLab",
+              "style": 10
+            },
+            {
+              "id": "AKcsB5gfBjz3",
+              "text": "Gitea",
+              "style": 21
+            },
+            {
+              "id": "gwTCfULSIl7H",
+              "text": "禅道",
+              "style": 15
+            },
+            {
+              "id": "E1zGpufwWEpK",
+              "text": "用友",
+              "style": 16
+            },
+            {
+              "id": "R5G36xx0PU4F",
+              "text": "GitHub",
+              "style": 21
+            }
+          ]
+        }
+      },
+      {
+        "id": "KbName0001",
+        "name": "知识库",
+        "type": "text"
+      },
+      {
+        "id": "KbPath0001",
+        "name": "层级路径",
+        "type": "text"
+      },
+      {
+        "id": "KbPid00001",
+        "name": "父节点ID",
+        "type": "text"
+      },
+      {
+        "id": "KbNid00001",
+        "name": "节点ID",
+        "type": "text"
+      },
+      {
+        "id": "KbKids0001",
+        "name": "子项数",
+        "type": "number",
+        "config": {
+          "precision": 0
+        }
+      },
+      {
+        "id": "KbUrl00001",
+        "name": "空间链接",
+        "type": "url"
+      },
+      {
+        "id": "KbSort0001",
+        "name": "排序",
+        "type": "number",
+        "config": {
+          "precision": 0
+        }
+      },
+      {
+        "id": "KbLvl00001",
+        "name": "层级",
+        "type": "number"
+      },
+      {
+        "id": "DocId000001",
+        "name": "文档ID",
+        "type": "text"
+      },
+      {
+        "id": "DocUuid00001",
+        "name": "文档UUID",
+        "type": "text"
+      }
+    ]
+  },
+  "VogzQYVe0XppAYgBuOpS1s": {
+    "title": "DING",
+    "properties": [
+      {
+        "id": "2w7HbmZb",
+        "name": "审批标题",
+        "type": "text"
+      },
+      {
+        "id": "3fmCwEOA",
+        "name": "审批类型",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "g1a2b3c4d5e6f708",
+              "text": "请假",
+              "style": 16
+            },
+            {
+              "id": "g2b3c4d5e6f7a809",
+              "text": "报销",
+              "style": 15
+            },
+            {
+              "id": "g3c4d5e6f7a8b901",
+              "text": "采购",
+              "style": 24
+            },
+            {
+              "id": "g4d5e6f7a8b9c012",
+              "text": "用章",
+              "style": 21
+            },
+            {
+              "id": "g5e6f7a8b9c0d123",
+              "text": "出差",
+              "style": 6
+            },
+            {
+              "id": "g6f7a8b9c0d1e234",
+              "text": "其他",
+              "style": 25
+            },
+            {
+              "id": "1KjXa27wzjXx",
+              "text": "离职",
+              "style": 4
+            },
+            {
+              "id": "U9HCxagirkt9",
+              "text": "绩效",
+              "style": 12
+            },
+            {
+              "id": "0juNg246lwgX",
+              "text": "加班",
+              "style": 9
+            },
+            {
+              "id": "yAlFJDitigNH",
+              "text": "IT需求",
+              "style": 17
+            },
+            {
+              "id": "NdnbW9FD75FQ",
+              "text": "发文",
+              "style": 20
+            }
+          ]
+        }
+      },
+      {
+        "id": "HOz6Mkn1",
+        "name": "发起人",
+        "type": "text"
+      },
+      {
+        "id": "jeyOituQ",
+        "name": "审批状态",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "h1a2b3c4d5e6f708",
+              "text": "审批中",
+              "style": 21
+            },
+            {
+              "id": "h2b3c4d5e6f7a809",
+              "text": "已通过",
+              "style": 0
+            },
+            {
+              "id": "h3c4d5e6f7a8b901",
+              "text": "已拒绝",
+              "style": 23
+            },
+            {
+              "id": "h4d5e6f7a8b9c012",
+              "text": "已撤销",
+              "style": 10
+            }
+          ]
+        }
+      },
+      {
+        "id": "LhIrsmDn",
+        "name": "发起时间",
+        "type": "date"
+      },
+      {
+        "id": "9XbqgisL",
+        "name": "审批编号",
+        "type": "text"
+      },
+      {
+        "id": "2WWbEwzb",
+        "name": "审批来源",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "s1a2b3c4d5e6f701",
+              "text": "我发起",
+              "style": 18
+            },
+            {
+              "id": "s2b3c4d5e6f7a02",
+              "text": "待我审批",
+              "style": 15
+            },
+            {
+              "id": "s3c4d5e6f7a8b03",
+              "text": "抄送我",
+              "style": 11
+            },
+            {
+              "id": "s4d5e6f7a8b9c04",
+              "text": "我已处理",
+              "style": 6
+            },
+            {
+              "id": "vJeTVOpxtxbb",
+              "text": "外部应用",
+              "style": 3
+            }
+          ]
+        }
+      },
+      {
+        "id": "DAUZPOS2",
+        "name": "来源应用",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "kNOmqhEQFG68",
+              "text": "钉钉",
+              "style": 24
+            },
+            {
+              "id": "ywrwdS4OkKpn",
+              "text": "企业微信",
+              "style": 17
+            },
+            {
+              "id": "8slXWjOPqJPA",
+              "text": "飞书",
+              "style": 4
+            },
+            {
+              "id": "GTP6uGyO65SE",
+              "text": "邮箱",
+              "style": 5
+            },
+            {
+              "id": "qtGBN9vDdNBW",
+              "text": "手动",
+              "style": 11
+            },
+            {
+              "id": "6hDCizTJseqc",
+              "text": "GitLab",
+              "style": 10
+            },
+            {
+              "id": "bIDJYsAk47dV",
+              "text": "Gitea",
+              "style": 21
+            },
+            {
+              "id": "6Rl0zg0yhAoN",
+              "text": "禅道",
+              "style": 15
+            },
+            {
+              "id": "AALytjK2a8D7",
+              "text": "用友",
+              "style": 16
+            },
+            {
+              "id": "ShEhsaKvK5iC",
+              "text": "GitHub",
+              "style": 21
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "8pG50L6vRsWi6v7P8YlGC7": {
+    "title": "MEET",
+    "properties": [
+      {
+        "id": "Kak8fVMT",
+        "name": "会议主题",
+        "type": "text"
+      },
+      {
+        "id": "fNVxTXtl",
+        "name": "开始时间",
+        "type": "date"
+      },
+      {
+        "id": "1K2A38S6",
+        "name": "时长",
+        "type": "text"
+      },
+      {
+        "id": "TYBMaLnw",
+        "name": "地点",
+        "type": "text"
+      },
+      {
+        "id": "IPNfrViW",
+        "name": "组织人",
+        "type": "text"
+      },
+      {
+        "id": "qQ52tCsB",
+        "name": "参会人",
+        "type": "text"
+      },
+      {
+        "id": "IBvtkKgt",
+        "name": "状态",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "m1a2b3c4d5e6f708",
+              "text": "未开始",
+              "style": 11
+            },
+            {
+              "id": "m2b3c4d5e6f7a809",
+              "text": "进行中",
+              "style": 3
+            },
+            {
+              "id": "m3c4d5e6f7a8b901",
+              "text": "已结束",
+              "style": 23
+            },
+            {
+              "id": "m4d5e6f7a8b9c012",
+              "text": "已取消",
+              "style": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "lUL6yylr",
+        "name": "纪要链接",
+        "type": "text"
+      },
+      {
+        "id": "EvId22",
+        "name": "事件ID",
+        "type": "text"
+      }
+    ]
+  },
+  "TWmt9f5r0XRGHDZBc7v9Wx": {
+    "title": "CAT",
+    "properties": [
+      {
+        "id": "3Wr6Az27",
+        "name": "分类名称",
+        "type": "text"
+      },
+      {
+        "id": "XENE89k4",
+        "name": "所属模块",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "c1a2b3c4d5e6f709",
+              "text": "任务",
+              "style": 23
+            },
+            {
+              "id": "c2b3c4d5e6f7a810",
+              "text": "日程",
+              "style": 9
+            },
+            {
+              "id": "c3c4d5e6f7a8b911",
+              "text": "会议",
+              "style": 9
+            },
+            {
+              "id": "c4d5e6f7a8b9c013",
+              "text": "资料",
+              "style": 23
+            },
+            {
+              "id": "c5e6f7a8b9c0d114",
+              "text": "审批",
+              "style": 8
+            }
+          ]
+        }
+      },
+      {
+        "id": "F85zJLQZ",
+        "name": "颜色",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "k1a2b3c4d5e6f709",
+              "text": "蓝",
+              "style": 24
+            },
+            {
+              "id": "k2b3c4d5e6f7a810",
+              "text": "绿",
+              "style": 16
+            },
+            {
+              "id": "k3c4d5e6f7a8b911",
+              "text": "橙",
+              "style": 8
+            },
+            {
+              "id": "k4d5e6f7a8b9c013",
+              "text": "红",
+              "style": 10
+            },
+            {
+              "id": "k5e6f7a8b9c0d114",
+              "text": "灰",
+              "style": 11
+            }
+          ]
+        }
+      },
+      {
+        "id": "aKA1nmgP",
+        "name": "排序",
+        "type": "number"
+      },
+      {
+        "id": "B3OxyXB5",
+        "name": "说明",
+        "type": "text"
+      }
+    ]
+  },
+  "OnTaihRfxXKvpltLhEXgEr": {
+    "title": "APPS",
+    "properties": [
+      {
+        "id": "T8EJQxqi",
+        "name": "应用名称",
+        "type": "text"
+      },
+      {
+        "id": "wGcDxHbE",
+        "name": "应用标识",
+        "type": "text"
+      },
+      {
+        "id": "QBLVr7pt",
+        "name": "应用类型",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "VTXkjqIhsonk",
+              "text": "钉钉",
+              "style": 22
+            },
+            {
+              "id": "T7LsBufssUZN",
+              "text": "企业微信",
+              "style": 16
+            },
+            {
+              "id": "gPxG2d900UCM",
+              "text": "飞书",
+              "style": 9
+            },
+            {
+              "id": "mhOdOfdQrsSr",
+              "text": "邮箱",
+              "style": 1
+            },
+            {
+              "id": "oOq9lXQDNRAY",
+              "text": "AI 接口",
+              "style": 25
+            },
+            {
+              "id": "neKaUua6moTy",
+              "text": "自定义",
+              "style": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "gGLBgrKg",
+        "name": "接入状态",
+        "type": "select",
+        "config": {
+          "options": [
+            {
+              "id": "TelnPbKRepKR",
+              "text": "已连接",
+              "style": 23
+            },
+            {
+              "id": "daKDtQLA0zxO",
+              "text": "已配置",
+              "style": 9
+            },
+            {
+              "id": "aCmUuPlPHYGB",
+              "text": "待配置",
+              "style": 4
+            },
+            {
+              "id": "5AbA5C9VDY5N",
+              "text": "连接失败",
+              "style": 26
+            },
+            {
+              "id": "LedfvKr9fWOh",
+              "text": "已停用",
+              "style": 5
+            }
+          ]
+        }
+      },
+      {
+        "id": "huQUUXcq",
+        "name": "接口地址",
+        "type": "text"
+      },
+      {
+        "id": "IRcUzbIn",
+        "name": "企业ID",
+        "type": "text"
+      },
+      {
+        "id": "Yr3qc3Lu",
+        "name": "应用ID",
+        "type": "text"
+      },
+      {
+        "id": "D1FwKd7s",
+        "name": "应用密钥",
+        "type": "text"
+      },
+      {
+        "id": "o0NMscoO",
+        "name": "用户ID",
+        "type": "text"
+      },
+      {
+        "id": "pKvkU8Sq",
+        "name": "同步能力",
+        "type": "text"
+      },
+      {
+        "id": "LxGX5NNc",
+        "name": "最后同步",
+        "type": "date"
+      },
+      {
+        "id": "GGowCx49",
+        "name": "说明",
+        "type": "text"
+      }
+    ]
+  }
+}
