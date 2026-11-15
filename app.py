@@ -174,7 +174,17 @@ def status_payload(sess):
 
 # ── 定时同步 ──────────────────────────────────────────────
 def scheduler():
+    # 计时起点 = 上一轮「跑完」的时间，不是「开始」的时间。
+    # 否则一轮全量（200 人可能跑 40+ 分钟）结束时早已超过间隔，会被立刻再触发一轮，
+    # 变成永不休息的连续全量同步。进程重启时用配置里的 last_sync 兜底，避免重启就狂跑。
     last_run = 0
+    try:
+        _ls = (db.cfg_all().get('last_sync') or '')[:19]
+        if _ls:
+            last_run = time.mktime(time.strptime(_ls, '%Y-%m-%dT%H:%M:%S'))
+    except Exception:
+        last_run = 0
+    was_running = False
     while True:
         try:
             # 攒批发送：本地几个同步脚本连着调接口时，只合成一条消息，不刷屏
@@ -186,8 +196,14 @@ def scheduler():
             # 有人刚登录 → 立刻给他单独跑一轮（登录时写入 dingtalk:sync_focus），
             # 这样「第一次打开工作台」不用等整轮 200 人跑完
             focus = (cfg.get('dingtalk:sync_focus') or '').strip()
+            running = syncer.is_running()
+            if was_running and not running:
+                # 刚刚跑完 → 从现在重新计时，等满一个间隔再跑下一轮
+                last_run = time.time()
+                print('[sched] 上一轮同步已结束，%.0f 分钟后再次检查' % (gap / 60))
+            was_running = running
             due = time.time() - last_run >= gap
-            if (auto or focus) and ready and (focus or due) and not syncer.is_running():
+            if (auto or focus) and ready and (focus or due) and not running:
                 last_run = time.time()
                 syncer.run_async()
                 print('[sched] 触发同步%s' % ('（登录优先）' if focus else ''))
@@ -1315,11 +1331,16 @@ class Handler(BaseHTTPRequestHandler):
             if p == '/api/config':
                 if s['kind'] != 'admin':
                     return self._send(403, {'error': '需要管理员权限'})
-                settings.save_platform('dingtalk', {
-                    'app_key': body.get('appKey', ''), 'app_secret': body.get('appSecret', ''),
-                    'corp_id': body.get('corpId', ''), 'user_id': body.get('userId', ''),
-                    'agent_id': body.get('agentId', ''),
-                })
+                # 只写「请求里真的带了」的字段：以前这里会把没传的 AppKey/CorpId
+                # 当空字符串写回去，只改同步间隔就会把凭证清空
+                _dt = {}
+                for _k, _bk in (('app_key', 'appKey'), ('app_secret', 'appSecret'),
+                                ('corp_id', 'corpId'), ('agent_id', 'agentId'),
+                                ('user_id', 'userId')):
+                    if _bk in body and body.get(_bk) is not None:
+                        _dt[_k] = str(body.get(_bk) or '').strip()
+                if _dt:
+                    settings.save_platform('dingtalk', _dt)
                 upd = {}
                 if body.get('intervalMin') is not None:
                     upd['interval_min'] = str(int(body['intervalMin']))
