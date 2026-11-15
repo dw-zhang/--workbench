@@ -102,11 +102,17 @@
   }
 
   var LAST = null;
+  var _runTimer = null;
   function refreshStatus() {
     req('GET', '/api/status').then(function (s) {
       LAST = s;
       if (!s.configured) { setBar('warn', '未连接钉钉 · 点「连接设置」填写凭证'); }
-      else if (s.running) { setBar('run', '同步中…'); }
+      else if (s.running) {
+        setBar('run', '同步中' + (s.syncProgress ? ' · ' + s.syncProgress : '…'));
+        // 同步时每 8 秒刷一次进度（平时 30 秒一次就够）
+        clearTimeout(_runTimer);
+        _runTimer = setTimeout(refreshStatus, 8000);
+      }
       else if (s.lastSync) { setBar('ok', '已连接' + (s.appName || s.name ? ' ' + (s.appName || s.name) : '') + ' · 最后同步 ' + s.lastSync.replace('T', ' ')); }
       else { setBar('warn', '已配置，但还没同步过 · 点「立即同步」'); }
       renderConnCard(s);

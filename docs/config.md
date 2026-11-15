@@ -93,6 +93,35 @@ curl -s "$HOST/api/query?db=ding&size=3&token=$TOKEN" | python3 -m json.tool | h
 
 > 普通员工 token 也可以调 `/api/query`，但**只会返回自己的数据**；管理员可用 `?person=<person_id>` 指定看谁的，`?person=__nobody__` 返回 0 条（用来反证隔离生效）。
 
+### 3.1 同步范围与节奏（人多了必须调）
+
+默认就是**全员同步**：只要在人员库里、绑了钉钉账号、状态不是「已停用」，就纳入范围。
+目的是「任何人第一次打开工作台，数据已经躺在库里」，而不是先看到空白页。
+
+| 配置键 | 默认 | 作用 |
+|---|---|---|
+| `dingtalk:sync_scope` | `all` | `all` 全员 / `login` 只同步「管理员 + 登录过的人」（老行为，省接口调用） |
+| `dingtalk:sync_limit` | `60` | 每轮最多同步多少人。按「上次同步时间」从老到新排队，**从没同步过的排最前**；`0` = 不限 |
+| `dingtalk:sync_pause` | `0.2` | 人与人之间的间隔（秒），防限流 |
+| `dingtalk:sync_focus` | 空 | 谁刚登录就写谁，定时器 30 秒内给他单独跑一轮，登录后很快有数据 |
+
+```bash
+# 人少、想每轮全量（<60 人基本不用改）
+docker exec wbdash python3 -c "import db; db.cfg_set({'dingtalk:sync_limit':'0'})"
+
+# 人特别多（1000+）、想省接口调用：退回只同步登录过的人
+docker exec wbdash python3 -c "import db; db.cfg_set({'dingtalk:sync_scope':'login'})"
+
+# 看当前同步进度（管理员在右下角同步条上也能看到）
+docker exec wbdash python3 -c "import db; print(db.cfg_get('sync:progress'))"
+```
+
+几件配套的事，避免「人一多就出事」：
+
+- **首轮静默**：一个人第一次被同步时只建档、不推送，否则上线当天等于给全公司群发消息；
+- **限流重试**：钉钉回 429 / `90018` / `Throttling`（全公司同步最容易撞上）会自动退避重试三次；
+- **单轮互斥**：上一轮没跑完，定时器不会叠第二轮（`data/sync.lock`）。
+
 ---
 
 ## 四、AI 模型与制度

@@ -253,22 +253,55 @@ def sync_dingtalk(cfg, say):
     astate = {'legacy': True, 'notified': False,
               'premium': db.cfg_get('dingtalk:premium_ok', '1') != '0',
               'premium_notified': True, 'err': stat['err']}
-    persons = [p for p in db.persons_all() if db.accounts_of(p['person_id'], 'dingtalk')]
-    # 同步范围：管理员（登录人）+ 所有登录过本系统的员工（登录时盖 last_login 戳）。
-    # 不全公司 200 人轮询——只同步真正在用工作台的人，省时间且数据都有归属。
+    _all = db.persons_all()
+    persons = [p for p in _all
+               if (p.get('status') or '') != 'disabled'
+               and db.accounts_of(p['person_id'], 'dingtalk')]
+    # 同步范围（dingtalk:sync_scope）
+    #   all   —— 全员（默认）：任何人第一次打开工作台，数据已经在库里，不用干等下一轮
+    #   login —— 只同步「管理员 + 登录过的人」（老行为，人特别多 / 想省接口调用时用）
     scope_uid = (pc.get('admin_userid') or '').strip()
-    logged_in = [p for p in persons if (p.get('last_login') or '').strip()]
-    if scope_uid or logged_in:
-        merged, seen = [], set()
-        for p in ([p for p in persons
-                   if any(a['account_id'] == scope_uid
-                          for a in db.accounts_of(p['person_id'], 'dingtalk'))] + logged_in):
+    admin_p = [p for p in persons
+               if scope_uid and any(a['account_id'] == scope_uid
+                                    for a in db.accounts_of(p['person_id'], 'dingtalk'))]
+    mode = (db.cfg_get('dingtalk:sync_scope') or 'all').strip().lower()
+    focus = (db.cfg_get('dingtalk:sync_focus') or '').strip()
+    picked = persons
+    if mode == 'login':
+        seen, picked = set(), []
+        for p in admin_p + [p for p in persons if (p.get('last_login') or '').strip()]:
             if p['person_id'] not in seen:
                 seen.add(p['person_id'])
-                merged.append(p)
-        if merged:
-            persons = merged
-            say('钉钉同步范围：登录人 + 已登录员工，共 %d 人' % len(merged))
+                picked.append(p)
+    focused = False
+    if focus:
+        # 谁刚登录就先同步谁：登录后几十秒内就能看到自己的数据，不用等整轮跑完
+        db.cfg_set({'dingtalk:sync_focus': ''})
+        fp = [p for p in persons if p['person_id'] == focus]
+        if fp:
+            picked, focused = fp, True
+            say('优先同步刚登录的人：%s' % (fp[0].get('name') or focus))
+    # 每轮人数上限：202 人一轮要跑近一小时，会把 30 分钟的定时器永远占住。
+    # 默认每轮 sync_limit 人，按「上次同步时间」从老到新取（从没同步过的排最前），
+    # 效果是新人第一时间有数据、其余人公平轮转。0 = 不限（首次全量补数时用）。
+    try:
+        limit = int(db.cfg_get('dingtalk:sync_limit') or 60)
+    except Exception:
+        limit = 60
+    if limit > 0 and not focused and len(picked) > limit:
+        _cf = db.cfg_all()
+        picked = sorted(picked, key=lambda x: (
+            float(_cf.get('sync:at:' + x['person_id']) or 0), x['person_id']))[:limit]
+        ids = {x['person_id'] for x in picked}
+        for p in admin_p:            # 管理员始终在范围内（他要在界面上看进度）
+            if p['person_id'] not in ids:
+                picked.append(p)
+    if picked:
+        persons = picked
+        say('钉钉同步范围：%d/%d 人（%s%s）' % (
+            len(persons), len([p for p in _all if (p.get('status') or '') != 'disabled']),
+            '全员' if mode != 'login' else '仅登录过的人',
+            '，本轮上限 %d' % limit if (limit and not focused) else ''))
     if not persons:
         pid = _legacy_person(pc)
         persons = [p for p in db.persons_all() if p['person_id'] == pid] if pid else []
@@ -276,12 +309,27 @@ def sync_dingtalk(cfg, say):
         stat['err'].append('没有可同步的钉钉成员（先在管理员页拉取通讯录并启用成员）')
         return stat
 
-    for p in persons:
+    try:
+        pause = float(db.cfg_get('dingtalk:sync_pause') or 0.2)
+    except Exception:
+        pause = 0.2
+    total_p = len(persons)
+    cold = set()          # 首次建档的人：不发通知
+    for idx, p in enumerate(persons, 1):
         pid = p['person_id']
         acc = db.accounts_of(pid, 'dingtalk')[0]
         uid = acc['account_id']
         name = p.get('name') or acc.get('name') or ''
-        say('钉钉：%s' % (name or uid))
+        say('钉钉：%s（%d/%d）' % (name or uid, idx, total_p))
+        # 第一次同步的人只「静默建档」：数据照样入库，但不给他推钉钉消息。
+        # 否则上线第一轮等于给全公司每人发一条「你有 N 条待审批」，纯骚扰。
+        try:
+            first_time = db.person_records(pid) == 0
+        except Exception:
+            first_time = False
+        notify.silence(pid, first_time)
+        if first_time:
+            cold.add(pid)
         try:
             unionid = (acc.get('extra') or {}).get('unionid') or cli.unionid_of(uid)
             if unionid and not (acc.get('extra') or {}).get('unionid'):
@@ -416,10 +464,11 @@ def sync_dingtalk(cfg, say):
                 props['审批流转'] = flow_txt
             if _upsert(db.TABLES['ding'], '审批编号', pidv, props, pid, 'dingtalk'):
                 stat['ding_new'] += 1
-                pending.setdefault(pid, []).append((
-                    _ms_of(d.get('create')) or _ms_of(it.get('createTime')),
-                    title, src_eff, pidv,
-                    props.get('处理链接') or _oa_link(pc, pidv)))
+                if not first_time:
+                    pending.setdefault(pid, []).append((
+                        _ms_of(d.get('create')) or _ms_of(it.get('createTime')),
+                        title, src_eff, pidv,
+                        props.get('处理链接') or _oa_link(pc, pidv)))
             else:
                 stat['ding_upd'] += 1
             # 「待我审批」同时进「等待回复」表，让待回复模块有真实事项；
@@ -605,6 +654,14 @@ def sync_dingtalk(cfg, say):
         except Exception as e:
             stat['err'].append('%s 知识库：%s' % (name, e))
 
+        notify.silence(pid, False)
+        try:
+            db.cfg_set({'sync:at:' + pid: '%.3f' % time.time()})
+        except Exception:
+            pass
+        if pause > 0 and idx < total_p:
+            time.sleep(pause)      # 人和人之间留一点间隔，别把接口打到限流
+
     # 「我发起」补齐：按审批模板 + 发起人查实例（v1.0 接口，不需要 OA 高级版权限）
     try:
         _initiated_sync(cli, pc, persons, stat, say)
@@ -613,7 +670,7 @@ def sync_dingtalk(cfg, say):
 
     # 「抄送我」补齐：按模板 + 部门枚举实例，读详情 cc_userids 反推归属
     try:
-        _cc_sync(cli, pc, persons, stat, say, pending)
+        _cc_sync(cli, pc, persons, stat, say, pending, cold)
     except Exception as e:
         stat['err'].append('抄送我补齐：%s' % e)
 
@@ -910,7 +967,7 @@ def _initiated_sync(cli, cfg, persons, stat, say):
     say('我发起：%d 个模板 · 命中 %d 条' % (len(codes), hit))
 
 
-def _cc_sync(cli, cfg, persons, stat, say, pending=None):
+def _cc_sync(cli, cfg, persons, stat, say, pending=None, cold=None):
     """按「模板 + 部门」枚举全公司实例，用详情里的 cc_userids 反推「抄送我」
 
     为什么这么做：钉钉的「抄送我」索引在 OA 高级版接口里（没开通，403），
@@ -1009,7 +1066,7 @@ def _cc_sync(cli, cfg, persons, stat, say, pending=None):
             if _upsert(db.TABLES['ding'], '审批编号', pidv, props, owner, 'dingtalk'):
                 stat['cc_new'] += 1
                 new_n += 1
-                if pending is not None:
+                if pending is not None and owner not in (cold or ()):
                     pending.setdefault(owner, []).append((
                         _ms_of(props.get('发起时间')), props.get('审批标题') or '',
                         '抄送我', pidv, props.get('处理链接') or _oa_link(cfg, pidv)))
@@ -1655,17 +1712,37 @@ def run_async(progress_sink=None):
         return False, '已有同步任务在跑'
 
     def job():
+        def sink(msg):
+            # 进度落到配置里，管理员右下角的同步条能直接看到「同步到第几个人」
+            try:
+                db.cfg_set({'sync:progress': str(msg or '')[:120]})
+            except Exception:
+                pass
+            if progress_sink:
+                try:
+                    progress_sink(msg)
+                except Exception:
+                    pass
+
         try:
-            st = sync_all(progress_sink)
+            st = sync_all(sink)
             msg = _summary(st)
             if st.get('errors'):
                 msg += ' | 部分失败：' + '；'.join(st['errors'][:3])
             rows = sum(v.get('new', 0) + v.get('ding_new', 0) + v.get('todo_new', 0)
                        for k, v in st.items() if isinstance(v, dict))
             db.log('sync', not st.get('errors'), rows, msg)
+            try:
+                db.cfg_set({'sync:progress': ''})
+            except Exception:
+                pass
         except Exception as e:
             db.log('sync', False, 0, '同步异常：%s' % e)
         finally:
+            try:
+                db.cfg_set({'sync:progress': ''})
+            except Exception:
+                pass
             _running.release()
 
     threading.Thread(target=job, daemon=True).start()

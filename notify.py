@@ -47,6 +47,24 @@ _lock = threading.RLock()
 _send_lock = threading.Lock()
 _cache = None
 _dirty = 0
+# 静默名单：某人第一次被同步时只建档不发消息，否则全公司一次性收到
+# 「你有 N 条待审批」，等于上线当天给所有人发垃圾短信
+_silent = set()
+
+
+def silence(pid, on=True):
+    if not pid:
+        return
+    with _lock:
+        if on:
+            _silent.add(pid)
+        else:
+            _silent.discard(pid)
+
+
+def is_silent(pid):
+    with _lock:
+        return pid in _silent
 
 
 # ── 队列读写 ──────────────────────────────────────────────
@@ -85,6 +103,8 @@ def push(pid, kind, title, link='', ts=None, extra=''):
     title = str(title or '').strip()
     if not pid or not title:
         return False
+    if is_silent(pid):
+        return False          # 首次建档的人：只入库，不打扰
     title = title[:80]
     extra = str(extra or '').strip()[:16]
     try:

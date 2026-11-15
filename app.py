@@ -163,6 +163,7 @@ def status_payload(sess):
         'autoSync': cfg.get('auto_sync', '1') == '1',
         'lastSync': cfg.get('last_sync') or '',
         'running': syncer.is_running(),
+        'syncProgress': cfg.get('sync:progress') or '',
         'counts': db.stats(None if admin else (sess.get('person_id') or '__none__')),
         'globalTotal': sum(db.stats().values()),
         'persons': match.report() if admin else None,
@@ -182,10 +183,14 @@ def scheduler():
             auto = cfg.get('auto_sync', '1') == '1'
             ready = any(settings.platform_ready(p) for p in settings.PLATFORM_ORDER)
             gap = max(5, int(cfg.get('interval_min') or 30)) * 60
-            if auto and ready and time.time() - last_run >= gap and not syncer.is_running():
+            # 有人刚登录 → 立刻给他单独跑一轮（登录时写入 dingtalk:sync_focus），
+            # 这样「第一次打开工作台」不用等整轮 200 人跑完
+            focus = (cfg.get('dingtalk:sync_focus') or '').strip()
+            due = time.time() - last_run >= gap
+            if (auto or focus) and ready and (focus or due) and not syncer.is_running():
                 last_run = time.time()
                 syncer.run_async()
-                print('[sched] 触发同步')
+                print('[sched] 触发同步%s' % ('（登录优先）' if focus else ''))
         except Exception:
             traceback.print_exc()
         time.sleep(30)

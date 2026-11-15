@@ -39,14 +39,22 @@ def _req(url, data=None, headers=None, method=None):
     req.add_header('Content-Type', 'application/json')
     for k, v in (headers or {}).items():
         req.add_header(k, v)
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-            txt = r.read().decode('utf-8', 'replace')
-    except urllib.error.HTTPError as e:
-        txt = e.read().decode('utf-8', 'replace')
-        raise DingError('HTTP %s' % e.code, code=e.code, raw=txt[:600])
-    except Exception as e:
-        raise DingError('网络请求失败：%s' % e)
+    # 全公司同步时调用量成百上千次，钉钉会回 429 / 5xx。
+    # 这两类是「等一下再来」，重试三次基本都能过；别的错误直接抛，不掩盖问题。
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+                txt = r.read().decode('utf-8', 'replace')
+            break
+        except urllib.error.HTTPError as e:
+            txt = e.read().decode('utf-8', 'replace')
+            if e.code in (429, 502, 503, 504) and attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise DingError('HTTP %s' % e.code, code=e.code, raw=txt[:600])
+        except Exception as e:
+            # 网络层异常不重试：POST 重放可能重复发通知，宁可报错让人看见
+            raise DingError('网络请求失败：%s' % e)
     try:
         return json.loads(txt)
     except Exception:
@@ -199,7 +207,14 @@ class Client:
 
     def _oapi(self, path, payload):
         url = '%s%s?access_token=%s' % (OAPI, path, urllib.parse.quote(self.token()))
-        d = _req(url, payload)
+        d = {}
+        for attempt in range(3):
+            d = _req(url, payload)
+            # 90018 请求过于频繁 / 88 触发流控：等一会儿再来，全公司同步很容易撞上
+            if (d.get('errcode') or 0) in (88, 90018) and attempt < 2:
+                time.sleep(2.0 * (attempt + 1))
+                continue
+            break
         if d.get('errcode'):
             raise DingError('%s 失败：%s' % (path, d.get('errmsg')), code=d.get('errcode'), raw=json.dumps(d)[:400])
         return d.get('result') or d
@@ -242,7 +257,17 @@ class Client:
         url = NEWAPI + path
         if query:
             url += '?' + urllib.parse.urlencode(query)
-        return _req(url, payload, headers={'x-acs-dingtalk-access-token': self.token()}, method=method)
+        d = {}
+        for attempt in range(3):
+            d = _req(url, payload, headers={'x-acs-dingtalk-access-token': self.token()},
+                     method=method)
+            code = d.get('code') or ''
+            # 新版接口的限流是 code=Throttling*，等一会儿重试即可
+            if isinstance(code, str) and code.startswith('Throttling') and attempt < 2:
+                time.sleep(2.0 * (attempt + 1))
+                continue
+            break
+        return d
 
     # ── 工作通知（应用消息推送） ─────────────────────────────
     def notify_work(self, agent_id, userids, title, markdown, url=''):

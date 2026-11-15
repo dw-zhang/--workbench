@@ -88,9 +88,11 @@ def _mint(cfg, person, userid):
         tok, exp = db.session_create('admin', name=name or '管理员')
         return {'token': tok, 'expires': exp, 'kind': 'admin', 'name': name or '管理员'}
     tok, exp = db.session_create('user', person['person_id'], name)
-    # 盖登录时间戳：同步任务据此把「登录过系统的员工」纳入同步范围
+    # 盖登录时间戳（同步统计用），并把这个人标成「本轮优先同步」：
+    # 定时器 30 秒内会给他单独跑一轮，登录后很快就能看到自己的数据
     try:
         db.person_set(person['person_id'], last_login=db.now())
+        db.cfg_set({'dingtalk:sync_focus': person['person_id']})
     except Exception:
         pass
     return {'token': tok, 'expires': exp, 'kind': 'user',

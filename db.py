@@ -506,6 +506,16 @@ def count(database, person_id=None):
         return c.execute('SELECT COUNT(*) AS n FROM records WHERE database=?', (database,)).fetchone()['n']
 
 
+def person_records(person_id):
+    """某人名下共有多少条记录（同步时判断「是不是第一次同步」）"""
+    if not person_id:
+        return 0
+    c = connect()
+    with _lock:
+        return c.execute('SELECT COUNT(*) AS n FROM records WHERE person_id=?',
+                         (person_id,)).fetchone()['n']
+
+
 # ── config ────────────────────────────────────────────────────────────
 DEFAULTS = {
     'app_key': '', 'app_secret': '', 'corp_id': '', 'user_id': '',
