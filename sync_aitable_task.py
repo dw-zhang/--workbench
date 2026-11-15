@@ -283,7 +283,7 @@ def main():
 
     # 回读核对
     try:
-        rows = api('/api/query?db=151WfQT8N0hn6nsOMnmMqh&size=5000', token=token).get('results') or []
+        rows = api('/api/query?db=task&size=5000', token=token).get('results') or []
         at = [r for r in rows if str(r.get('来源应用') or '') == '钉钉多维表格']
         at_open = [r for r in at if str(r.get('状态') or '') != '已完成']
         print('回读核对：任务表共 %d 条，其中多维表格 %d 条（未完成 %d 条）'

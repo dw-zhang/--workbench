@@ -35,7 +35,7 @@ import urllib.request
 HOST = os.environ.get('WBDASH_HOST', 'http://127.0.0.1:8787')
 PASSWORD = os.environ.get('WBDASH_PASSWORD', '')
 ME = os.environ.get('WBDASH_ME', '')
-WAIT_DB = 'DiQ0qiGK3ZejC7g3bc1NDk'
+WAIT_DB = 'wait'
 TABLE_TS_FILE = os.path.expanduser('~/.wbdash_table_at.json')
 TABLE_GAP = 20 * 3600          # 表格评论扫描间隔（秒）
 # 欢迎语/寒暄类关键词：命中即跳过，不进「等待回复」
@@ -237,7 +237,7 @@ def main():
     items = at.get('items') or []
     total = len(items)
     if a.skip_noise:
-        # 可选过滤：AI小钉、发送人=群名的机器人通知、欢迎语寒暄
+        # 可选过滤：官方助理/机器人通知、发送人=群名的播报、欢迎语寒暄
         real = []
         for it in items:
             conv = (it.get('conversation') or {}).get('name') or ''

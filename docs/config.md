@@ -17,7 +17,10 @@
 
 ## 二、平台凭证：网页里填（推荐）
 
-路径：**右上角身份栏 → 🛡 管理员登录 → 控制台 → 平台配置 → 对应卡片**
+路径：**登录卡切「管理员」tab → 输密码 → 顶栏 🛡 名字 → 管理员控制台 → 平台配置 → 对应卡片**
+（钉钉另有等价入口：设置页 `#/settings` 底部「钉钉连接」卡，只有 4 个基础字段 + 测试连接/立即同步）
+
+界面细节见 [ui.md](ui.md)（第 5 节「API / 凭证到底在哪填」）。
 
 | 平台 | 要填的字段 | 存储键位（config 表） |
 |---|---|---|
@@ -68,24 +71,25 @@ curl -s "$HOST/api/platforms?token=$TOKEN" | python3 -m json.tool | head -40
 # 5) 触发同步（异步，几秒到几分钟）
 curl -s -X POST "$HOST/api/sync?token=$TOKEN" -H 'Content-Type: application/json' -d '{}'
 
-# 6) 查数据：db 参数要填「表 ID」（不是 task/ding 这类别名，见下方映射）
-curl -s "$HOST/api/query?db=VogzQYVe0XppAYgBuOpS1s&size=3&token=$TOKEN" | python3 -m json.tool | head -30
+# 6) 查数据：db 参数就是表名（task / ding / wait …，见下方对照表）
+curl -s "$HOST/api/query?db=ding&size=3&token=$TOKEN" | python3 -m json.tool | head -30
 ```
 
-**表 ID 映射**（来自 `seed_schema.json`，固定不变）：
+**表名对照**（`records.database` 存的就是这些语义名，定义在 `db.py` 的 `TABLES`）：
 
-| 别名 | 表 ID | 内容 |
+| 表名 | 内容 | 前端页面 |
 |---|---|---|
-| task | `151WfQT8N0hn6nsOMnmMqh` | 任务 |
-| sched | `KHYNKWUOMqxe4rqJJFOl6t` | 日程 |
-| wait | `DiQ0qiGK3ZejC7g3bc1NDk` | 等待回复 |
-| files | `8rrQVoUCjp1jWnVlVLkWIm` | 资料 |
-| ding | `VogzQYVe0XppAYgBuOpS1s` | 钉钉审批 |
-| meet | `8pG50L6vRsWi6v7P8YlGC7` | 会议 |
-| cat | `TWmt9f5r0XRGHDZBc7v9Wx` | 分类 |
-| apps | `OnTaihRfxXKvpltLhEXgEr` | 应用接入 |
+| `task` | 任务 | 任务管理 |
+| `sched` | 日程 | 日历 / 日程看板 |
+| `wait` | 等待回复 | 等待回复 |
+| `files` | 资料 | 资料整理 |
+| `ding` | 钉钉审批 | 首页「待我审批」/ 审批判断 |
+| `meet` | 会议 | 会议 |
+| `cat` | 分类 | 分类（公共表，不按人过滤） |
+| `apps` | 应用接入 | 应用接入（公共表，不按人过滤） |
 
-程序内部用 `db.TABLES['ding']` 取，写脚本时不要硬编码字符串，直接 `import db; db.TABLES['ding']`。
+程序内部统一用 `db.TABLES['ding']` 取，写脚本时不要硬编码字符串，直接 `import db; db.TABLES['ding']`。
+（老版本曾用外部平台的 18 位 databaseId 作标识，现已在启动时统一迁移为语义名，老数据自动兼容。）
 
 > 普通员工 token 也可以调 `/api/query`，但**只会返回自己的数据**；管理员可用 `?person=<person_id>` 指定看谁的，`?person=__nobody__` 返回 0 条（用来反证隔离生效）。
 
@@ -95,21 +99,24 @@ curl -s "$HOST/api/query?db=VogzQYVe0XppAYgBuOpS1s&size=3&token=$TOKEN" | python
 
 ### 4.1 大模型接口（OpenAI 兼容）
 
-三种生效顺序：**个人配置 > 全局配置 > 「应用接入」表里的 AI 记录**。
+优先级：**个人配置 > `ai:global` > 「应用接入」表里的 AI 记录**（都没有则用内置指令引擎）。
 
 | 方式 | 在哪 | 适用 |
 |---|---|---|
-| 个人 | 设置页 → **我的 AI 模型** → 填 `接口地址` / `Key` / `模型名` | 每人用自己的 Key，成本自理 |
-| 全局（推荐） | 管理员在 **应用接入** 加一条 `应用类型=AI 接口` 的记录：接口地址 / 应用密钥 / 应用ID 填模型名 | 全公司共用一个 Key |
-| 直写库 | `config` 表 `ai:global` = `{"base":"https://api.xxx.com/v1","key":"sk-...","model":"gpt-4o-mini"}` | 批量/脚本部署 |
+| 个人（推荐先试） | **AI 助手页（`#/ai`）底部「我的 AI 模型」** → 填 `接口地址` / `模型名` / `API Key` → `测试连通` → 保存 | 每人用自己的 Key，成本自理；员工也能改 |
+| 全局 | `config` 表 `ai:global` = `{"base":"https://api.xxx.com/v1","key":"sk-...","model":"gpt-4o-mini"}` | 全公司共用一个 Key |
+| 全局（老路径，不推荐） | 应用接入页加一条 `应用标识=ai` 或 `应用类型=AI 接口` 的记录：接口地址 / 应用ID(模型名) / 应用密钥(Key) | 历史兼容 |
+
+> ⚠️ 应用接入是公共表（`db.PUBLIC_TABLES`），记录会随 `/api/query` 下发给每个登录用户。
+> **不要把 API Key 填在这里**，生产环境用个人配置或 `ai:global`。
 
 ```bash
 # 个人模型：需要「员工登录态」的 token（管理员 token 没有 person_id，会报错）
-# 最省事的用法就是网页：设置 → 我的 AI 模型
+# 最省事的用法就是网页：AI 助手页底部「我的 AI 模型」
 curl -s -X POST "$HOST/api/ai/mycfg?token=<员工token>" -H 'Content-Type: application/json' \
   -d '{"base":"https://api.openai.com/v1","key":"sk-xxx","model":"gpt-4o-mini"}'
 
-# 全局模型：写 config 表的 ai:global（等价于在「应用接入」加一条 AI 记录）
+# 全局模型：写 config 表的 ai:global
 docker exec -it workbench python -c "
 import db, json
 db.cfg_set({'ai:global': json.dumps({'base':'https://api.deepseek.com/v1','key':'sk-xxx','model':'deepseek-chat'})})

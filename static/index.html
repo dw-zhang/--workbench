@@ -626,12 +626,12 @@
         <div class="stats">
           <div class="stat-card clickable" data-tab="待处理" title="查看待办任务">
             <div class="stat-ico" style="background:#dbeafe">📄</div>
-            <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="151WfQT8N0hn6nsOMnmMqh" id="stat-todo">–</div>
+            <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="task" id="stat-todo">–</div>
             <div class="stat-label">今日待办</div><div class="stat-sub" id="stat-todo-sub">未完成事项</div></div>
           </div>
           <div class="stat-card clickable" data-pri="高" data-tab="待处理" title="查看高优先级任务">
             <div class="stat-ico" style="background:#dcfce7">🚩</div>
-            <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="151WfQT8N0hn6nsOMnmMqh" id="stat-focus">–</div>
+            <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="task" id="stat-focus">–</div>
             <div class="stat-label">本周重点</div><div class="stat-sub">高优先级未完成</div></div>
           </div>
           <div class="stat-card clickable" data-go="#/waiting" title="查看等待回复事项">
@@ -641,7 +641,7 @@
           </div>
           <div class="stat-card clickable" data-tab="已完成" title="查看已完成任务">
             <div class="stat-ico" style="background:#ffedd5">✅</div>
-            <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="151WfQT8N0hn6nsOMnmMqh" id="stat-done">–</div>
+            <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="task" id="stat-done">–</div>
             <div class="stat-label">已完成</div><div class="stat-sub">全部任务对照</div></div>
           </div>
         </div>
@@ -716,13 +716,13 @@
     <div class="page-head"><h1 class="page-title">任务管理</h1></div>
     <div class="stats">
       <div class="stat-card"><div class="stat-ico" style="background:#dbeafe">📋</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="151WfQT8N0hn6nsOMnmMqh" id="tk-stat-todo">–</div><div class="stat-label">待办任务</div><div class="stat-sub">未完成</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="task" id="tk-stat-todo">–</div><div class="stat-label">待办任务</div><div class="stat-sub">未完成</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#fef3c7">🚩</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="151WfQT8N0hn6nsOMnmMqh" id="tk-stat-focus">–</div><div class="stat-label">高优先级</div><div class="stat-sub">未完成</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="task" id="tk-stat-focus">–</div><div class="stat-label">高优先级</div><div class="stat-sub">未完成</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#fce7f3">⏰</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="151WfQT8N0hn6nsOMnmMqh" id="tk-stat-overdue">–</div><div class="stat-label">已逾期</div><div class="stat-sub">超过截止时间</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="task" id="tk-stat-overdue">–</div><div class="stat-label">已逾期</div><div class="stat-sub">超过截止时间</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#ffedd5">✅</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="151WfQT8N0hn6nsOMnmMqh" id="tk-stat-done">–</div><div class="stat-label">已完成</div><div class="stat-sub">全部任务对照</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="task" id="tk-stat-done">–</div><div class="stat-label">已完成</div><div class="stat-sub">全部任务对照</div></div></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">全部任务 <span id="tk-task-count" style="color:#9ca3af; font-weight:400"></span><span id="tk-jump-chips" style="margin-left:8px"></span></div></div>
@@ -867,13 +867,13 @@
     <div class="page-head"><h1 class="page-title">等待回复</h1></div>
     <div class="stats">
       <div class="stat-card"><div class="stat-ico" style="background:#fef3c7">💬</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="DiQ0qiGK3ZejC7g3bc1NDk" id="stat-w1">–</div><div class="stat-label">等待回复</div><div class="stat-sub">需跟进</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="wait" id="stat-w1">–</div><div class="stat-label">等待回复</div><div class="stat-sub">需跟进</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#dcfce7">📬</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="DiQ0qiGK3ZejC7g3bc1NDk" id="stat-w2">–</div><div class="stat-label">已回复</div><div class="stat-sub">近期闭环</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="wait" id="stat-w2">–</div><div class="stat-label">已回复</div><div class="stat-sub">近期闭环</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#f3f4f6">🗑️</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="DiQ0qiGK3ZejC7g3bc1NDk" id="stat-w3">–</div><div class="stat-label">已关闭</div><div class="stat-sub">不再跟进</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="wait" id="stat-w3">–</div><div class="stat-label">已关闭</div><div class="stat-sub">不再跟进</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#dbeafe">📊</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="DiQ0qiGK3ZejC7g3bc1NDk" id="stat-w4">–</div><div class="stat-label">全部事项</div><div class="stat-sub">累计记录</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="wait" id="stat-w4">–</div><div class="stat-label">全部事项</div><div class="stat-sub">累计记录</div></div></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">回复事项 <span id="wait-count" style="color:#9ca3af; font-weight:400"></span></div></div>
@@ -916,7 +916,7 @@
     </div>
     <div class="stats">
       <div class="stat-card"><div class="stat-ico" style="background:#dbeafe">📁</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="8rrQVoUCjp1jWnVlVLkWIm" id="stat-f1">–</div><div class="stat-label">资料总数</div><div class="stat-sub">含目录与文档</div></div></div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="files" id="stat-f1">–</div><div class="stat-label">资料总数</div><div class="stat-sub">含目录与文档</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#e0e7ff">📚</div>
         <div><div class="stat-num" id="stat-f2">–</div><div class="stat-label">知识库</div><div class="stat-sub">钉钉 / 飞书</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#fef3c7">🗂</div>
@@ -1025,16 +1025,16 @@
     </div>
     <div class="stats">
       <div class="stat-card"><div class="stat-ico" style="background:#dbeafe">📅</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="8pG50L6vRsWi6v7P8YlGC7" id="mt-stat-today">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="meet" id="mt-stat-today">–</div>
         <div class="stat-label">今日会议</div><div class="stat-sub">按开始时间统计</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#dcfce7">🗓️</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="8pG50L6vRsWi6v7P8YlGC7" id="mt-stat-week">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="meet" id="mt-stat-week">–</div>
         <div class="stat-label">未来 7 天</div><div class="stat-sub">upcoming 会议</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#fef3c7">🔴</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="8pG50L6vRsWi6v7P8YlGC7" id="mt-stat-live">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="meet" id="mt-stat-live">–</div>
         <div class="stat-label">进行中</div><div class="stat-sub">当前状态为进行中</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#f3f4f6">🗂️</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="8pG50L6vRsWi6v7P8YlGC7" id="mt-stat-total">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="meet" id="mt-stat-total">–</div>
         <div class="stat-label">全部会议</div><div class="stat-sub">含已结束与已取消</div></div></div>
     </div>
     <div class="card">
@@ -1064,16 +1064,16 @@
     </div>
     <div class="stats">
       <div class="stat-card"><div class="stat-ico" style="background:#dbeafe">🏷️</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="TWmt9f5r0XRGHDZBc7v9Wx" id="cat-stat-total">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="cat" id="cat-stat-total">–</div>
         <div class="stat-label">分类总数</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#dcfce7">🧩</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="TWmt9f5r0XRGHDZBc7v9Wx" id="cat-stat-modules">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="cat" id="cat-stat-modules">–</div>
         <div class="stat-label">覆盖模块</div></div></div>
     </div>
     <div class="duo">
       <div class="card">
         <div class="card-head"><div class="card-title">分类列表</div></div>
-        <div data-sp-bindable="database" data-sp-database-id="TWmt9f5r0XRGHDZBc7v9Wx" id="cat-list"><div class="empty">数据加载中…</div></div>
+        <div data-sp-bindable="database" data-sp-database-id="cat" id="cat-list"><div class="empty">数据加载中…</div></div>
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">新建分类</div></div>
@@ -1100,13 +1100,13 @@
 
     <div class="stats">
       <div class="stat-card"><div class="stat-ico" style="background:#dcfce7">🔌</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="OnTaihRfxXKvpltLhEXgEr" id="ap-stat-live">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="apps" id="ap-stat-live">–</div>
         <div class="stat-label">已接入应用</div><div class="stat-sub">已连接 / 已配置</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#fef3c7">📝</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="OnTaihRfxXKvpltLhEXgEr" id="ap-stat-todo">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="apps" id="ap-stat-todo">–</div>
         <div class="stat-label">待配置</div><div class="stat-sub">还缺凭证或未启用</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#dbeafe">🧩</div>
-        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="OnTaihRfxXKvpltLhEXgEr" id="ap-stat-caps">–</div>
+        <div><div class="stat-num" data-sp-bindable="database" data-sp-database-id="apps" id="ap-stat-caps">–</div>
         <div class="stat-label">同步能力项</div><div class="stat-sub">全部已接入应用合计</div></div></div>
       <div class="stat-card"><div class="stat-ico" style="background:#f3f4f6">⏱️</div>
         <div><div class="stat-num" id="ap-stat-sync" style="font-size:15px">–</div>
@@ -1116,7 +1116,7 @@
     <div class="duo" style="align-items:start">
       <div class="card">
         <div class="card-head"><div class="card-title">连接器</div><span id="ap-count" style="font-size:12px; color:#9ca3af"></span></div>
-        <div class="ap-list" data-sp-bindable="database" data-sp-database-id="OnTaihRfxXKvpltLhEXgEr" id="ap-list">
+        <div class="ap-list" data-sp-bindable="database" data-sp-database-id="apps" id="ap-list">
           <div class="empty">数据加载中…</div>
         </div>
         <div class="note">凭证保存在「应用接入配置」表，仅用于同步脚本调用对应开放平台；密钥在列表里只显示是否已填写。</div>
@@ -1752,8 +1752,8 @@
 try {
 (function() {
   var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-  var DATABASE_ID = '151WfQT8N0hn6nsOMnmMqh';
-  var TASK_DB = '151WfQT8N0hn6nsOMnmMqh', SCHED_DB = 'KHYNKWUOMqxe4rqJJFOl6t', WAIT_DB = 'DiQ0qiGK3ZejC7g3bc1NDk', FILES_DB = '8rrQVoUCjp1jWnVlVLkWIm', DING_DB = 'VogzQYVe0XppAYgBuOpS1s';
+  var DATABASE_ID = 'task';
+  var TASK_DB = 'task', SCHED_DB = 'sched', WAIT_DB = 'wait', FILES_DB = 'files', DING_DB = 'ding';
   var TASK_OPTS = {}, WAIT_OPTS = {}, FILE_OPTS = {}, DING_OPTS = {};
   var TASKS = [], WAITS = [], currentTab = 'all';
   var priCls = { '高': 'pri-高', '中': 'pri-中', '低': 'pri-低' };
@@ -2346,8 +2346,8 @@ try {
 try {
 (function() {
   var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-  var DATABASE_ID = '151WfQT8N0hn6nsOMnmMqh';
-  var TASK_DB = '151WfQT8N0hn6nsOMnmMqh';
+  var DATABASE_ID = 'task';
+  var TASK_DB = 'task';
   var OPTS = {}, TASKS = [];
   var currentTab = 'all', kw = '', priFilter = '';
   var jump = null;   /* 看板跳转带入的筛选：{tab, pri, owner, kw, due:{start,end,openOnly,label}} */
@@ -2540,7 +2540,7 @@ try {
         if (stV) properties['状态'] = { select: stV };
         var projV = form.querySelector('[name="project"]').value;
         if (projV) properties['所属项目'] = { text: projV };
-        db.addRecord({ databaseId: '151WfQT8N0hn6nsOMnmMqh', properties: properties })
+        db.addRecord({ databaseId: 'task', properties: properties })
           .then(function() { cache.wipe(); form.reset(); reload(); })
           .catch(function(err) { console.error('[database] 提交失败:', err); alert('提交失败，请稍后重试'); })
           .then(function() { if (btn) { btn.disabled = false; btn.textContent = '＋ 新建任务'; } });
@@ -2568,7 +2568,7 @@ try {
 try {
 (function() {
   var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-  var TASK_DB = '151WfQT8N0hn6nsOMnmMqh';
+  var TASK_DB = 'task';
   var OPTS = {}, ROWS = [], MODE = 'week', loaded = false;
   var FL = { kw: '', status: '', pri: '', owner: '', src: '' };   /* 看板筛选 */
   var SC = { '已完成': '#16a34a', '进行中': '#2563eb', '待处理': '#f59e0b' };
@@ -2920,7 +2920,7 @@ try {
 /* ---- 日程看板：周视图 + 月历 + 时间线 + 清单 + 提醒 + 标签 + 调整记录 ---- */
 try {
 (function() {
-  var SCHED_DB = 'KHYNKWUOMqxe4rqJJFOl6t', TDB = '151WfQT8N0hn6nsOMnmMqh';
+  var SCHED_DB = 'sched', TDB = 'task';
   var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
   var SCH = [], TSK = [], nLoad = 0, loaded = false;
   var H0 = 7, H1 = 21, ROWH = 44;
@@ -3392,8 +3392,8 @@ try {
 try {
 (function() {
   var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-  var DATABASE_ID = 'DiQ0qiGK3ZejC7g3bc1NDk';
-  var WAIT_DB = 'DiQ0qiGK3ZejC7g3bc1NDk';
+  var DATABASE_ID = 'wait';
+  var WAIT_DB = 'wait';
   var OPTS = {}, ROWS = [];
   var currentTab = 'all';
   var CACHE_KEY = 'wbwb_wait_form_v1';
@@ -3430,7 +3430,7 @@ try {
   function setStatus(ids, st, done) {
     if (!ids || !ids.length || !db) return;
     Promise.all(ids.map(function(id) {
-      return db.updateRecord({ databaseId: 'DiQ0qiGK3ZejC7g3bc1NDk', recordId: id, properties: { '状态': { select: st } } });
+      return db.updateRecord({ databaseId: 'wait', recordId: id, properties: { '状态': { select: st } } });
     })).then(function() {
       wbToast('已更新 ' + ids.length + ' 条为「' + st + '」');
       if (done) done();
@@ -3715,7 +3715,7 @@ try {
         if (stV) properties['状态'] = { select: stV };
         var noteV = form.querySelector('[name="item_note"]').value;
         if (noteV) properties['备注'] = { text: noteV };
-        db.addRecord({ databaseId: 'DiQ0qiGK3ZejC7g3bc1NDk', properties: properties })
+        db.addRecord({ databaseId: 'wait', properties: properties })
           .then(function() { cache.wipe(); form.reset(); reload(); })
           .catch(function(err) { console.error('[database] 提交失败:', err); alert('提交失败，请稍后重试'); })
           .then(function() { if (btn) { btn.disabled = false; btn.textContent = '＋ 登记事项'; } });
@@ -3739,8 +3739,8 @@ try {
 try {
 (function() {
   var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-  var DATABASE_ID = '8rrQVoUCjp1jWnVlVLkWIm';
-  var FILES_DB = '8rrQVoUCjp1jWnVlVLkWIm';
+  var DATABASE_ID = 'files';
+  var FILES_DB = 'files';
   var ROOT_ID = '__root__';
   var OPTS = {}, SPACES = [], SP_MAP = {}, STAT = { total: 0, folders: 0, docs: 0 };
   var NODE_CACHE = {}, curSpace = '', treeKw = '', mode = 'tree';
@@ -3785,7 +3785,7 @@ try {
       { name: 'byKb', type: 'count', groupBy: '知识库' },
       { name: 'byType', type: 'count', groupBy: '类型' }
     ];
-    return db.aggregate({ databaseId: '8rrQVoUCjp1jWnVlVLkWIm', aggregates: aggs }).then(function(res) {
+    return db.aggregate({ databaseId: 'files', aggregates: aggs }).then(function(res) {
       var out = {};
       (res.results || []).forEach(function(x) { out[x.name] = x.value; });
       STAT.total = n2(out.total);
@@ -3902,7 +3902,7 @@ try {
     var acc = [], guard = 0;
     function step(cursor) {
       return db.query({
-        databaseId: '8rrQVoUCjp1jWnVlVLkWIm',
+        databaseId: 'files',
         filter: { and: [
           { property: { property: '知识库', text: { equals: curSpace } } },
           parentCond(parentId)
@@ -4307,7 +4307,7 @@ try {
     clear(box);
     box.appendChild(mkEl('div', 'empty', '搜索中…'));
     db.query({
-      databaseId: '8rrQVoUCjp1jWnVlVLkWIm',
+      databaseId: 'files',
       filter: { and: [
         { property: { property: '知识库', text: { equals: curSpace } } },
         { property: { property: '文件名称', text: { contains: treeKw } } }
@@ -4378,7 +4378,7 @@ try {
     if (listDone) return Promise.resolve(listRows);
     var flt = buildListFilter();
     return db.query({
-      databaseId: '8rrQVoUCjp1jWnVlVLkWIm',
+      databaseId: 'files',
       sorts: [{ property: '更新时间', direction: 'descending' }],
       pageSize: PAGE_QUERY,
       filter: flt,
@@ -4502,7 +4502,7 @@ try {
         if (ownerV) properties['更新人'] = { text: ownerV };
         var linkV = form.querySelector('[name="file_link"]').value;
         if (linkV) properties['链接'] = { url: { link: linkV } };
-        db.addRecord({ databaseId: '8rrQVoUCjp1jWnVlVLkWIm', properties: properties })
+        db.addRecord({ databaseId: 'files', properties: properties })
           .then(function() { cache.wipe(); form.reset(); return loadStats(); })
           .then(function() { return loadList(true); })
           .catch(function(err) { console.error('[database] 提交失败:', err); alert('提交失败，请稍后重试'); })
@@ -4526,8 +4526,8 @@ try {
 try {
 (function() {
   var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-  var DATABASE_ID = 'KHYNKWUOMqxe4rqJJFOl6t';
-  var SCHED_DB = 'KHYNKWUOMqxe4rqJJFOl6t';
+  var DATABASE_ID = 'sched';
+  var SCHED_DB = 'sched';
   var ROWS = [];
   var CACHE_KEY = 'wbwb_sched_form_v1';
 
@@ -4577,7 +4577,7 @@ try {
         if (dv) properties['时长'] = { text: dv };
         var nv = form.querySelector('[name="sched_desc"]').value;
         if (nv) properties['说明'] = { text: nv };
-        db.addRecord({ databaseId: 'KHYNKWUOMqxe4rqJJFOl6t', properties: properties })
+        db.addRecord({ databaseId: 'sched', properties: properties })
           .then(function() { cache.wipe(); form.reset(); reload(); })
           .catch(function(err) { console.error('[database] 提交失败:', err); alert('提交失败，请稍后重试'); })
           .then(function() { if (btn) { btn.disabled = false; btn.textContent = '＋ 添加日程'; } });
@@ -4730,8 +4730,8 @@ try {
   try {
   (function() {
     var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-    var DATABASE_ID = '8pG50L6vRsWi6v7P8YlGC7';
-    var MEET_DB = '8pG50L6vRsWi6v7P8YlGC7';
+    var DATABASE_ID = 'meet';
+    var MEET_DB = 'meet';
     var MOPTS = {}, MEETS = [];
     var cache = attachCache(document.getElementById('mt-form'), 'wbwb_meet_form_v1', ['m_title','m_dur','m_loc','m_host','m_members','m_link']);
 
@@ -4796,7 +4796,7 @@ try {
         if ((v = form.querySelector('[name="m_members"]').value)) p['参会人'] = { text: v };
         if ((v = form.querySelector('[name="m_status"]').value)) p['状态'] = { select: v };
         if ((v = form.querySelector('[name="m_link"]').value)) p['纪要链接'] = { text: v };
-        db.addRecord({ databaseId: '8pG50L6vRsWi6v7P8YlGC7', properties: p })
+        db.addRecord({ databaseId: 'meet', properties: p })
           .then(function() { cache.wipe(); form.reset(); loadAll(MEET_DB, '开始时间', 'ascending', render, 'mt-tbody'); })
           .catch(function(err) { console.error('[database] 会议提交失败:', err); alert('提交失败，请稍后重试'); })
           .then(function() { if (btn) { btn.disabled = false; btn.textContent = '＋ 新建会议'; } });
@@ -4810,8 +4810,8 @@ try {
   try {
   (function() {
     var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-    var DATABASE_ID = 'TWmt9f5r0XRGHDZBc7v9Wx';
-    var CAT_DB = 'TWmt9f5r0XRGHDZBc7v9Wx';
+    var DATABASE_ID = 'cat';
+    var CAT_DB = 'cat';
     var COPTS = {}, CATS = [];
     var COLORS = { '蓝': '#2563eb', '绿': '#16a34a', '橙': '#ea580c', '红': '#dc2626', '灰': '#6b7280' };
     var cache = attachCache(document.getElementById('cat-form'), 'wbwb_cat_form_v1', ['cat_name','cat_sort','cat_desc']);
@@ -4870,7 +4870,7 @@ try {
         if ((v = form.querySelector('[name="cat_color"]').value)) p['颜色'] = { select: v };
         if ((v = form.querySelector('[name="cat_sort"]').value)) p['排序'] = { number: Number(v) };
         if ((v = form.querySelector('[name="cat_desc"]').value)) p['说明'] = { text: v };
-        db.addRecord({ databaseId: 'TWmt9f5r0XRGHDZBc7v9Wx', properties: p })
+        db.addRecord({ databaseId: 'cat', properties: p })
           .then(function() { cache.wipe(); form.reset(); loadAll(CAT_DB, '排序', 'ascending', render, 'cat-list'); })
           .catch(function(err) { console.error('[database] 分类提交失败:', err); alert('提交失败，请稍后重试'); })
           .then(function() { if (btn) { btn.disabled = false; btn.textContent = '＋ 新建分类'; } });
@@ -4884,7 +4884,7 @@ try {
   try {
   (function() {
     var db = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-    var DATABASE_ID = 'OnTaihRfxXKvpltLhEXgEr';
+    var DATABASE_ID = 'apps';
     var APPS = [], OPTS = {}, editingId = '';
     var ICONS = { '钉钉': '📌', '企业微信': '🤝', '飞书': '🕊️', '邮箱': '📧', 'AI 接口': '🤖', '自定义': '🧩' };
     var CLS = { '已连接': 'st-已结束', '已配置': 'st-已结束', '待配置': 'st-未开始', '连接失败': 'st-已取消', '已停用': 'st-未开始' };
@@ -5127,7 +5127,7 @@ try {
     var DATA = { task: [], sched: [], ding: [], files: [], apps: [] };
     var O = { task: {}, ding: {}, apps: {} };
     var loaded = false, aiCfg = null, hasGlobalCfg = false;
-    var TASK_DB = '151WfQT8N0hn6nsOMnmMqh', SCHED_DB = 'KHYNKWUOMqxe4rqJJFOl6t', DING_DB = 'VogzQYVe0XppAYgBuOpS1s', FILES_DB = '8rrQVoUCjp1jWnVlVLkWIm', APPS_DB = 'OnTaihRfxXKvpltLhEXgEr';
+    var TASK_DB = 'task', SCHED_DB = 'sched', DING_DB = 'ding', FILES_DB = 'files', APPS_DB = 'apps';
 
     function val(r, k) {
       var v = r ? r[k] : '';
@@ -5482,7 +5482,7 @@ try {
       if (proj) p['所属项目'] = { text: proj };
       if (owner) p['负责人'] = { text: owner };
       var rec = { '任务名称': title, '优先级': pri, '状态': '待处理', '截止时间': ymd(when) + 'T18:00:00', '所属项目': proj, '负责人': owner, '来源应用': '手动' };
-      db.addRecord({ databaseId: '151WfQT8N0hn6nsOMnmMqh', properties: p }).then(function(res) {
+      db.addRecord({ databaseId: 'task', properties: p }).then(function(res) {
         rec._id = (res && (res.id || res.recordId)) || '';
         DATA.task.unshift(rec);
         var row = { text: title, meta: '优先级 ' + pri + ' · 截止 ' + ymd(when) + (proj ? ' · 项目 ' + proj : '') };
@@ -5506,7 +5506,7 @@ try {
         return;
       }
       if (!db) { say('当前是只读快照，改不了状态。'); return; }
-      db.updateRecord({ databaseId: '151WfQT8N0hn6nsOMnmMqh', recordId: rid(rec), properties: { '状态': { select: '已完成' } } })
+      db.updateRecord({ databaseId: 'task', recordId: rid(rec), properties: { '状态': { select: '已完成' } } })
         .then(function() {
           rec['状态'] = '已完成';
           done([{ text: val(rec, '任务名称'), meta: '状态已改为 已完成' }], '已完成：');
@@ -5525,7 +5525,7 @@ try {
       if (!db) { say('当前是只读快照，写不进数据表。'); return; }
       var p = { '日程事项': { text: title }, '开始时间': { date: ymd(when) + 'T' + tm } };
       var rec = { '日程事项': title, '开始时间': ymd(when) + 'T' + tm, '来源应用': '手动' };
-      db.addRecord({ databaseId: 'KHYNKWUOMqxe4rqJJFOl6t', properties: p }).then(function(res) {
+      db.addRecord({ databaseId: 'sched', properties: p }).then(function(res) {
         rec._id = (res && (res.id || res.recordId)) || '';
         DATA.sched.push(rec);
         done([{ text: title, meta: ymd(when) + ' ' + tm.slice(0, 5) }], '已加入日程：');

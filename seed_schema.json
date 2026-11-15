@@ -1,5 +1,5 @@
 {
-  "151WfQT8N0hn6nsOMnmMqh": {
+  "task": {
     "title": "TASK",
     "properties": [
       {
@@ -146,7 +146,7 @@
       }
     ]
   },
-  "KHYNKWUOMqxe4rqJJFOl6t": {
+  "sched": {
     "title": "SCHED",
     "properties": [
       {
@@ -235,7 +235,7 @@
       }
     ]
   },
-  "DiQ0qiGK3ZejC7g3bc1NDk": {
+  "wait": {
     "title": "WAIT",
     "properties": [
       {
@@ -304,7 +304,7 @@
       }
     ]
   },
-  "8rrQVoUCjp1jWnVlVLkWIm": {
+  "files": {
     "title": "FILES",
     "properties": [
       {
@@ -503,7 +503,7 @@
       }
     ]
   },
-  "VogzQYVe0XppAYgBuOpS1s": {
+  "ding": {
     "title": "DING",
     "properties": [
       {
@@ -714,7 +714,7 @@
       }
     ]
   },
-  "8pG50L6vRsWi6v7P8YlGC7": {
+  "meet": {
     "title": "MEET",
     "properties": [
       {
@@ -788,7 +788,7 @@
       }
     ]
   },
-  "TWmt9f5r0XRGHDZBc7v9Wx": {
+  "cat": {
     "title": "CAT",
     "properties": [
       {
@@ -876,7 +876,7 @@
       }
     ]
   },
-  "OnTaihRfxXKvpltLhEXgEr": {
+  "apps": {
     "title": "APPS",
     "properties": [
       {

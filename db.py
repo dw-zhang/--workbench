@@ -18,16 +18,18 @@ import uuid
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get('WB_DB', os.path.join(HERE, 'data', 'workbench.db'))
 
-# 8 张表的内部标识（沿用原 databaseId，前端代码里是字面量，不能改）
+# 8 张表的标识：直接用语义名做 records.database 的值
+# （老版本用过外部平台的 18 位 databaseId 作标识，已统一迁移为语义名；
+#   如需对接外部表 ID，改这里即可，前端只认语义名。）
 TABLES = {
-    'task':  '151WfQT8N0hn6nsOMnmMqh',
-    'sched': 'KHYNKWUOMqxe4rqJJFOl6t',
-    'wait':  'DiQ0qiGK3ZejC7g3bc1NDk',
-    'files': '8rrQVoUCjp1jWnVlVLkWIm',
-    'ding':  'VogzQYVe0XppAYgBuOpS1s',
-    'meet':  '8pG50L6vRsWi6v7P8YlGC7',
-    'cat':   'TWmt9f5r0XRGHDZBc7v9Wx',
-    'apps':  'OnTaihRfxXKvpltLhEXgEr',
+    'task':  'task',
+    'sched': 'sched',
+    'wait':  'wait',
+    'files': 'files',
+    'ding':  'ding',
+    'meet':  'meet',
+    'cat':   'cat',
+    'apps':  'apps',
 }
 DB2KEY = {v: k for k, v in TABLES.items()}
 
@@ -141,7 +143,36 @@ def _init(c):
     cols_p = [r[1] for r in c.execute('PRAGMA table_info(persons)').fetchall()]
     if 'last_login' not in cols_p:
         c.execute('ALTER TABLE persons ADD COLUMN last_login TEXT')
+    _migrate_legacy_tables(c)
     c.commit()
+
+
+def _migrate_legacy_tables(c):
+    """老库迁移：records/schemas 的 database 曾用外部平台的 18 位表 ID，
+    现在统一用语义名（task/sched/wait/files/ding/meet/cat/apps）。
+
+    迁移依据 schemas.title（TASK/SCHED/…，与本程序的表名一一对应），
+    因此代码里不需要保留任何外部 ID。幂等：已迁移过的库不会重复执行。
+    """
+    known = {k.upper(): k for k in TABLES}
+    rows = c.execute('SELECT database,title,properties FROM schemas').fetchall()
+    for db_id, title, props in rows:
+        key = known.get(str(title or '').strip().upper())
+        if not key or key == db_id:
+            continue
+        n = c.execute('SELECT COUNT(*) FROM records WHERE database=?', (db_id,)).fetchone()[0]
+        c.execute('UPDATE records SET database=? WHERE database=?', (key, db_id))
+        exists = c.execute('SELECT 1 FROM schemas WHERE database=?', (key,)).fetchone()
+        if exists:
+            c.execute('DELETE FROM schemas WHERE database=?', (db_id,))
+        else:
+            c.execute('UPDATE schemas SET database=? WHERE database=?', (key, db_id))
+        print('[db] 表标识迁移：%s → %s（%d 条记录）' % (title, key, n))
+    # 没有 schema 行、但挂着老 ID 的孤儿记录：按"表名为空"兜底不动，仅告警
+    orphan = [r[0] for r in c.execute(
+        'SELECT DISTINCT database FROM records').fetchall() if r[0] not in TABLES.values()]
+    if orphan:
+        print('[db] 警告：存在未知表标识的记录：%s' % ', '.join(orphan))
 
 
 def now():

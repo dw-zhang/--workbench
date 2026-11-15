@@ -15,14 +15,14 @@ def iso(days, hours=0):
 
 PEOPLE = ['演示用户', '员工甲', '员工乙', '员工丙', '员工丁', '员工戊']
 
-TASK = '151WfQT8N0hn6nsOMnmMqh'
-SCHED = 'KHYNKWUOMqxe4rqJJFOl6t'
-WAIT = 'DiQ0qiGK3ZejC7g3bc1NDk'
-FILES = '8rrQVoUCjp1jWnVlVLkWIm'
-DING = 'VogzQYVe0XppAYgBuOpS1s'
-MEET = '8pG50L6vRsWi6v7P8YlGC7'
-CAT = 'TWmt9f5r0XRGHDZBc7v9Wx'
-APPS = 'OnTaihRfxXKvpltLhEXgEr'
+TASK = 'task'
+SCHED = 'sched'
+WAIT = 'wait'
+FILES = 'files'
+DING = 'ding'
+MEET = 'meet'
+CAT = 'cat'
+APPS = 'apps'
 
 task_names = [('处理服务工单 #1024', '高', '进行中', 'IT 运维'),
               ('整理月度资产台账', '中', '待处理', '资产管理'),
