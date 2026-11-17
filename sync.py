@@ -19,6 +19,7 @@ import urllib.parse
 
 import db
 import match
+import notable
 import notify
 import settings
 from dingtalk import Client as DingClient, DingError
@@ -1663,7 +1664,8 @@ def sync_all(progress=None):
     result, errors = {}, []
     for name, fn in (('dingtalk', sync_dingtalk), ('feishu', sync_feishu),
                      ('github', sync_github), ('gitlab', sync_gitlab), ('gitea', sync_gitea),
-                     ('zentao', sync_zentao), ('kingdee', sync_kingdee), ('yonyou', sync_yonyou)):
+                     ('zentao', sync_zentao), ('kingdee', sync_kingdee), ('yonyou', sync_yonyou),
+                     ('notable', notable.sync_notable)):
         try:
             st = fn(cfg, say)
             if st is None:
@@ -1704,6 +1706,8 @@ def _summary(st):
         parts.append('金蝶 +%d' % st['kingdee']['new'])
     if 'yonyou' in st:
         parts.append('用友 +%d' % st['yonyou']['new'])
+    if 'notable' in st:
+        parts.append('多维表格 +%d' % st['notable']['new'])
     return ' · '.join(parts) or '没有可同步的平台（检查凭证）'
 
 

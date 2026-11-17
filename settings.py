@@ -36,16 +36,18 @@ PLATFORM_FIELDS = {
     'yonyou':   [('host', '开放平台地址'), ('app_key', 'AppKey'), ('app_secret', 'AppSecret'),
                  ('ent_code', '企业编码（可选）'), ('user', '接口用户编码'), ('todo_path', '待办接口路径（可选）')],
     'wecom':    [('corp_id', 'CorpID'), ('secret', '应用 Secret'), ('agent_id', 'AgentId')],
+    'notable':  [('bases', '多维表 Base 链接（逗号分隔，可粘贴 alidocs 分享链接或填 baseId）'),
+                 ('notify_open', '新任务发钉钉工作通知（填 0 关闭；默认开，每个 Base 首次导入静默）')],
 }
 SECRET_KEYS = {'app_secret', 'token', 'secret', 'webhook_secret', 'password'}
 
 # 展示顺序
-PLATFORM_ORDER = ('dingtalk', 'feishu', 'github', 'gitlab', 'gitea', 'zentao', 'kingdee', 'yonyou', 'wecom')
+PLATFORM_ORDER = ('dingtalk', 'feishu', 'github', 'gitlab', 'gitea', 'zentao', 'kingdee', 'yonyou', 'wecom', 'notable')
 
 PLATFORM_NAME = {
     'dingtalk': '钉钉', 'feishu': '飞书', 'github': 'GitHub', 'gitlab': 'GitLab',
     'gitea': 'Gitea/Gogs', 'zentao': '禅道', 'kingdee': '金蝶云星空',
-    'yonyou': '用友', 'wecom': '企业微信',
+    'yonyou': '用友', 'wecom': '企业微信', 'notable': '钉钉多维表格',
 }
 
 
@@ -83,6 +85,7 @@ def platform_ready(platform):
         'kingdee': ['host', 'acct_id', 'app_id', 'app_secret'],
         'yonyou': ['host', 'app_key', 'app_secret'],
         'wecom': ['corp_id', 'secret'],
+        'notable': ['bases'],
     }.get(platform, [])
     return all(cfg.get(k) for k in need)
 
