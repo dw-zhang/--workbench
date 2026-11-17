@@ -745,6 +745,9 @@ def project_del(pid):
     c = connect()
     with _lock:
         c.execute('DELETE FROM projects WHERE project_id=?', (pid,))
+        # 原样导入的镜像行与关联字段解析表一并清理
+        c.execute('DELETE FROM raw_records WHERE project_id=?', (pid,))
+        c.execute('DELETE FROM config WHERE k=?', ('raw:linkmap:%s' % pid,))
         # 清掉任务行上的项目标签（任务本身保留，回退为普通任务）
         rows = c.execute("SELECT id, data FROM records WHERE database='task' "
                          "AND data LIKE ?", ('%' + pid + '%',)).fetchall()

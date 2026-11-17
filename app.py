@@ -1776,9 +1776,24 @@ def projects_list(s):
     return {'projects': out, 'kind': s['kind']}
 
 
-def _raw_cell(v):
-    """原样单元格归一：成员/单选取文本，13 位毫秒戳转日期，超长截断"""
+def _raw_cell(v, col='', linkmap=None):
+    """原样单元格归一：关联记录→主键文本、单选取文本、进度→百分比、毫秒戳→日期"""
     import datetime as _dt
+    # 关联记录字段：{"linkedRecordIds":[...]} → 关联行的主键文本
+    if isinstance(v, dict) and 'linkedRecordIds' in v:
+        names = []
+        for i in (v.get('linkedRecordIds') or []):
+            t = (linkmap or {}).get(str(i))
+            names.append(t if t else '关联#' + str(i)[:6])
+        return '、'.join(names)
+    # 进度/完成度字段：0~1 的小数 → 百分比
+    if col and any(w in str(col) for w in ('完成度', '进度')) and not isinstance(v, (dict, list)):
+        try:
+            f = float(str(v).strip())
+            if 0 <= f <= 1:
+                return '%d%%' % round(f * 100)
+        except Exception:
+            pass
     s = _cell_text(v)
     try:
         n = int(str(v).strip()) if str(v).strip().isdigit() else 0
@@ -1812,8 +1827,12 @@ def project_detail(pid, s):
             for k in (r['fields'] or {}).keys():
                 if k not in cols:
                     cols.append(k)
+        try:
+            lm = json.loads(db.cfg_get('raw:linkmap:%s' % pid) or '{}')
+        except Exception:
+            lm = {}
         rows = [{'record_id': r['record_id'],
-                 'cells': [_raw_cell((r['fields'] or {}).get(c)) for c in cols]}
+                 'cells': [_raw_cell((r['fields'] or {}).get(c), c, lm) for c in cols]}
                 for r in recs]
         return {'project': head, 'raw': {'columns': cols, 'rows': rows},
                 'stats': {}, 'tasks': []}

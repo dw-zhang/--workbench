@@ -42,6 +42,44 @@ def _sheet_name(sheet):
     return ''
 
 
+def _record_title_text(fields):
+    """一行记录的显示文本：优先任务/名称类字段，否则取第一个有值的字段"""
+    fields = fields or {}
+    tset = set(TITLE_NAMES)
+    for k, v in fields.items():
+        if k in tset:
+            s = _cell_text(v)
+            if s:
+                return s
+    for k, v in fields.items():
+        s = _cell_text(v)
+        if s:
+            return s
+    return ''
+
+
+def _link_map(tok, base_id):
+    """整库记录 ID → 主键显示文本 的映射，用于把关联记录字段解析成可读文本"""
+    out = {}
+    try:
+        for sh in _list_sheets(tok, base_id):
+            sid = _sheet_id(sh)
+            if not sid:
+                continue
+            try:
+                _, recs = _iter_records(tok, base_id, sid)
+            except NotableError:
+                continue
+            for r in recs:
+                t = _record_title_text(r.get('fields') or {})
+                rid = str(r.get('id') or '')
+                if rid and t:
+                    out[rid] = t
+    except Exception:
+        pass
+    return out
+
+
 def _guess_roles(names, recs):
     """列语义推断：列名提示（高置信）+ 值形态扫描（中置信）"""
     roles = {}
@@ -218,6 +256,12 @@ def sync_projects(cfg, say):
             continue
         # ── 原样导入项目：不做字段映射，整表镜像，不进任务管理 ──
         if not fm.get('title') or not fm.get('user'):
+            # 关联记录字段解析表：整库记录 ID → 主键文本（渲染时把 linkedRecordIds 变成可读名称）
+            try:
+                lm = _link_map(tok, p['base_id'])
+                db.cfg_set({'raw:linkmap:%s' % pid: json.dumps(lm, ensure_ascii=False)})
+            except Exception:
+                pass
             db.raw_replace(pid, recs)
             say('项目 %s（原样导入）：镜像 %d 行' % (pname, len(recs)))
             if first:
