@@ -1374,15 +1374,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(403, {'error': '需要管理员权限'})
                 return self._send(200, person_action(body))
             if p == '/api/projects/import':
-                if s['kind'] != 'admin':
-                    return self._send(403, {'error': '需要管理员权限'})
                 try:
                     return self._send(200, projects_mod.analyze_link(body.get('link') or ''))
                 except projects_mod.NotableError as e:
                     return self._send(400, {'error': str(e)})
             if p == '/api/projects':
-                if s['kind'] != 'admin':
-                    return self._send(403, {'error': '需要管理员权限'})
                 try:
                     pid = projects_mod.create_project(
                         body.get('name') or '', body.get('baseId') or '', body.get('sheetId') or '',
@@ -1393,12 +1389,49 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {'error': str(e)})
                 db.log('config', True, 0, '新建项目 %s' % (body.get('name') or ''))
                 return self._send(200, {'ok': True, 'project_id': pid})
-            if p == '/api/projects/resume':
-                if s['kind'] != 'admin':
-                    return self._send(403, {'error': '需要管理员权限'})
+            if p == '/api/projects/task/new':
                 p0 = db.project_get(body.get('projectId') or '')
                 if not p0:
                     return self._send(404, {'error': '项目不存在'})
+                if s['kind'] != 'admin' and p0.get('owner_person_id') != (s.get('person_id') or ''):
+                    return self._send(403, {'error': '只有管理员或项目负责人可以新增任务'})
+                people = _dingtalk_people(body.get('users') or [])
+                users = [(x['name'], x['union_id']) for x in people]
+                try:
+                    rid, _fields = projects_mod.add_task(
+                        p0, body.get('title') or '', users,
+                        status=body.get('status') or '', priority=body.get('priority') or '',
+                        due=body.get('due') or '')
+                except projects_mod.NotableError as e:
+                    return self._send(400, {'error': str(e)})
+                # 立即落本地任务表（不等下一轮 30 分钟同步）
+                props = {
+                    '任务名称': str(body.get('title') or '').strip()[:120],
+                    '优先级': PRIORITY_CN.get(body.get('priority') or '', '中'),
+                    '状态': body.get('status') or '待处理',
+                    '截止时间': str(body.get('due') or '')[:10],
+                    '负责人': '、'.join(x['name'] for x in people)[:40] or '未分配',
+                    '所属项目ID': p0['project_id'], '所属项目': p0['name'][:40],
+                    '处理链接': p0.get('url') or '', '来源应用': '钉钉多维表格',
+                    '钉钉任务ID': 'aitbl:%s' % rid,
+                }
+                for x in people:
+                    if x.get('person_id'):
+                        db.add_record(db.TABLES['task'], props, source='notable',
+                                      person_id=x['person_id'])
+                if not people:
+                    # 执行人一个都没匹配上：落给项目负责人自己，保证任务不丢
+                    if p0.get('owner_person_id'):
+                        db.add_record(db.TABLES['task'], props, source='notable',
+                                      person_id=p0['owner_person_id'])
+                db.log('config', True, 0, '项目「%s」新增任务：%s' % (p0['name'], props['任务名称'][:30]))
+                return self._send(200, {'ok': True, 'record_id': rid})
+            if p == '/api/projects/resume':
+                p0 = db.project_get(body.get('projectId') or '')
+                if not p0:
+                    return self._send(404, {'error': '项目不存在'})
+                if s['kind'] != 'admin' and p0.get('owner_person_id') != (s.get('person_id') or ''):
+                    return self._send(403, {'error': '只有管理员或项目负责人可以恢复同步'})
                 db.project_set(p0['project_id'], status='active')
                 db.log('config', True, 0, '恢复项目同步 %s' % p0['name'])
                 return self._send(200, {'ok': True})
@@ -1656,6 +1689,34 @@ def _project_task_rows(pid, person_id=None):
     return r.get('results') or []
 
 
+PRIORITY_CN = {'高': '高', '中': '中', '低': '低'}
+
+
+def _dingtalk_people(names):
+    """姓名 → [{name, person_id, union_id}]（钉钉账号里带 unionId 的成员）
+    用于在工作台新增任务时把执行人写进多维表格成员字段"""
+    want = set(x for x in (str(n).strip() for n in (names or [])) if x)
+    if not want:
+        return []
+    c = db.connect()
+    with db._lock:
+        rows = c.execute(
+            "SELECT a.person_id, a.extra, p.name FROM accounts a "
+            "JOIN persons p ON p.person_id = a.person_id "
+            "WHERE a.platform='dingtalk'").fetchall()
+    m = {}
+    for pid, extra, pname in rows:
+        if pname not in want or pname in m:
+            continue
+        uid = ''
+        try:
+            uid = (json.loads(extra or '{}') or {}).get('unionid') or ''
+        except Exception:
+            pass
+        m[pname] = {'name': pname, 'person_id': pid, 'union_id': uid}
+    return [m[k] for k in sorted(m)]
+
+
 def _project_stats(recs):
     today = time.strftime('%Y-%m-%d')
     total = len(recs)
@@ -1716,12 +1777,22 @@ def project_detail(pid, s):
     recs = _project_task_rows(pid) if (is_admin or is_owner) else _project_task_rows(pid, person_id=me)
     fields = ('任务名称', '状态', '优先级', '截止时间', '负责人', '处理链接', '来源应用', '更新时间')
     tasks = [{k: r.get(k) for k in fields if r.get(k)} for r in recs]
+    # 执行人候选：项目里出现过的负责人，去重后给出可@的钉钉身份
+    owner_names = set()
+    for r in recs:
+        for nm in str(r.get('负责人') or '').split('、'):
+            nm = nm.strip()
+            if nm:
+                owner_names.add(nm)
+    owner_names.add(str((db.person_get(me) or {}).get('name') or ''))
+    owner_names.discard('')
     return {'project': {'project_id': pid, 'name': p['name'],
                         'sheet_name': p.get('sheet_name') or '',
                         'url': p.get('url') or '', 'status': p.get('status') or 'active',
                         'owner': is_owner,
                         'field_map': p.get('field_map') or {}},
-            'stats': _project_stats(recs), 'tasks': tasks}
+            'stats': _project_stats(recs), 'tasks': tasks,
+            'people': _dingtalk_people(owner_names)}
 
 
 def persons_payload():

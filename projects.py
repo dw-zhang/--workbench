@@ -20,7 +20,8 @@ import settings
 from notable import (NotableError, _base_ids, _cell_date, _cell_members, _cell_text,
                      _iter_records, _list_sheets, _operator_id, _person_map, _pick,
                      _req, _token, API, PRIORITY_MAP, STATUS_MAP,
-                     DUE_NAMES, PRIORITY_NAMES, STATUS_NAMES, TITLE_NAMES, USER_HINTS)
+                     DUE_NAMES, PRIORITY_NAMES, STATUS_NAMES, TITLE_NAMES, USER_HINTS,
+                     create_record)
 
 # 字段映射的角色键（field_map 的合法键）
 ROLES = ('title', 'status', 'priority', 'due', 'user')
@@ -145,6 +146,37 @@ def delete_project(pid, by_admin=False, by_person=''):
         return False
     db.project_del(pid)
     return True
+
+
+# ── 工作台直接新增任务（写多维表格） ──────────────────────────────────
+def add_task(p, title, users, status='', priority='', due=''):
+    """把一行任务写进项目绑定的多维表格（钉钉侧为主存储，写入后由同步回流）
+    p: db.project_get() 的项目档案
+    users: [(姓名, unionId)]；unionId 为空的成员降级为姓名文本
+    返回 (recordId, fields)"""
+    import datetime as _dt
+    fm = p.get('field_map') or {}
+    title = str(title or '').strip()
+    if not title:
+        raise NotableError('任务名称不能为空')
+    if not fm.get('title') or not fm.get('user'):
+        raise NotableError('项目字段映射不完整，无法写入')
+    tok = _token()
+    fields = {fm['title']: title[:120]}
+    members = [{'unionId': uid} for _, uid in users if uid]
+    if members:
+        fields[fm['user']] = members
+    elif users:
+        fields[fm['user']] = '、'.join(nm for nm, _ in users if nm)
+    if fm.get('status') and status:
+        fields[fm['status']] = str(status)
+    if fm.get('priority') and priority:
+        fields[fm['priority']] = str(priority)
+    if fm.get('due') and due:
+        y, m, d = str(due)[:10].split('-')
+        fields[fm['due']] = int(_dt.datetime(int(y), int(m), int(d), 12, 0).timestamp() * 1000)
+    rid = create_record(tok, p['base_id'], p['sheet_id'], fields)
+    return rid, fields
 
 
 # ── 按项目同步 ────────────────────────────────────────────────────────

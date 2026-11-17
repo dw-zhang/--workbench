@@ -3097,6 +3097,13 @@ try {
       pick('ov');
 
       var acts = el('div', 'wb-actions');
+      if (d.project.owner || KIND === 'admin') {
+        var bAdd = el('button', 'btn-mini primary', '＋ 新增任务');
+        bAdd.addEventListener('click', function() {
+          openTaskForm(d, function() { box.close(); openDetail(pid); });
+        });
+        acts.appendChild(bAdd);
+      }
       if (d.project.url) {
         var bOpen = el('button', 'btn-mini primary', '打开钉钉多维表格');
         bOpen.addEventListener('click', function() { window.open(d.project.url, '_blank'); });
@@ -3105,6 +3112,77 @@ try {
       acts.appendChild(el('button', 'btn-mini', '关闭')).addEventListener('click', function() { box.close(); });
       b.appendChild(acts);
     });
+  }
+
+  /* ── 新增任务：直接写入钉钉多维表格 ── */
+  function openTaskForm(d, onDone) {
+    var box = mask0('新增任务 · ' + d.project.name);
+    box.b.style.width = 'min(540px, 94vw)';
+    var b = box.b;
+    b.appendChild(el('div', 'pr-steps', '任务会直接写入钉钉多维表格（一行一个任务），执行人会在钉钉里收到 @；写完立即出现在工作台任务管理里，无需等同步。'));
+    var users = d.people || [];
+    var picked = {};
+    var fTitle = el('input'); fTitle.type = 'text'; fTitle.placeholder = '要做什么？一句话说清';
+    var fDue = el('input'); fDue.type = 'date';
+    var selSt = el('select'); ['待处理', '进行中', '已完成'].forEach(function(s) { var o = el('option', null, s); o.value = s; selSt.appendChild(o); });
+    var selPri = el('select'); ['中', '高', '低'].forEach(function(s) { var o = el('option', null, s); o.value = s; selPri.appendChild(o); });
+    function frow(label, node) {
+      var r = el('div');
+      r.style.cssText = 'display:grid;grid-template-columns:76px 1fr;gap:10px;align-items:center;margin-top:12px';
+      r.appendChild(el('label', null, label)).style.cssText = 'color:#6b7280;font-size:13px;text-align:right';
+      if (node.tagName === 'INPUT' || node.tagName === 'SELECT') {
+        node.style.cssText += ';border:1px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:13px;width:100%;box-sizing:border-box';
+      }
+      r.appendChild(node);
+      b.appendChild(r);
+    }
+    var chipRow = el('div'); chipRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+    function drawChips() {
+      chipRow.innerHTML = '';
+      if (!users.length) {
+        chipRow.appendChild(el('span', 'pr-conf', '项目里还没有可@的成员 —— 先在多维表格里给任务指派过执行人，或联系管理员同步通讯录。'));
+        return;
+      }
+      users.forEach(function(u) {
+        var c = el('button', 'btn-mini', (picked[u.name] ? '✓ ' : '＋ ') + u.name);
+        c.type = 'button';
+        if (picked[u.name]) c.style.cssText = 'background:#eff6ff;color:#2563eb;border-color:#93c5fd;font-weight:600';
+        c.addEventListener('click', function() {
+          if (picked[u.name]) delete picked[u.name]; else picked[u.name] = 1;
+          drawChips();
+        });
+        chipRow.appendChild(c);
+      });
+    }
+    drawChips();
+    frow('任务名称', fTitle);
+    var uwrap = el('div'); uwrap.appendChild(chipRow);
+    uwrap.appendChild(el('div', 'pr-conf', '选中的执行人会写进多维表格的成员列（钉钉里能看到是谁派的任务）')).style.marginTop = '6px';
+    frow('执行人', uwrap);
+    frow('状态', selSt);
+    frow('优先级', selPri);
+    frow('截止日期', fDue);
+    var acts = el('div', 'wb-actions');
+    var btn = el('button', 'btn-mini primary', '写入多维表格');
+    btn.style.padding = '9px 18px';
+    btn.addEventListener('click', function() {
+      var title = fTitle.value.trim();
+      if (!title) { alert('请填写任务名称'); return; }
+      btn.disabled = true; btn.textContent = '写入中…';
+      req('/api/projects/task/new', {
+        projectId: d.project.project_id, title: title,
+        users: Object.keys(picked), status: selSt.value,
+        priority: selPri.value, due: fDue.value
+      }).then(function(r2) {
+        btn.disabled = false; btn.textContent = '写入多维表格';
+        if (r2.error) { alert('写入失败：' + r2.error); return; }
+        box.close();
+        if (onDone) onDone();
+      });
+    });
+    acts.appendChild(btn);
+    acts.appendChild(el('button', 'btn-mini', '取消')).addEventListener('click', function() { box.close(); });
+    b.appendChild(acts);
   }
 
   /* ── 导入向导：链接 → 分析 → 选表 → 确认字段映射 ── */

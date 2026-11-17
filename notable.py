@@ -239,6 +239,26 @@ def _iter_records(tok, bid, sheet):
     return sname, recs
 
 
+def create_record(tok, bid, sid, fields):
+    """往数据表写一行任务。fields 值类型：
+    文本/单选 → 字符串；成员 → [{'unionId': ..}]；日期 → 毫秒时间戳。
+    需要「AI 表格应用写权限」；返回新记录 id（失败抛 NotableError）。"""
+    url = (API % bid + '/sheets/%s/records?operatorId=%s'
+           % (urllib.parse.quote(sid), urllib.parse.quote(_operator_id())))
+    d = _req(url, tok, {'records': [{'fields': fields}]})
+    recs = d.get('records') or d.get('value') or []
+    r0 = recs[0] if recs else {}
+    return str(r0.get('recordId') or r0.get('id') or '')
+
+
+def delete_record(tok, bid, sid, rid):
+    """删除一行（撤回误写/清理测试数据）。实测正确端点：
+    POST /sheets/{sid}/records/delete，body {"recordIds": [..]}"""
+    url = (API % bid + '/sheets/%s/records/delete?operatorId=%s'
+           % (urllib.parse.quote(sid), urllib.parse.quote(_operator_id())))
+    _req(url, tok, {'recordIds': [str(rid)]})
+
+
 def sync_notable(cfg, say):
     pc = settings.get_platform('notable')
     if not settings.platform_ready('notable'):
