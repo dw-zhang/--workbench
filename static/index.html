@@ -3119,7 +3119,7 @@ try {
     var box = mask0('新增任务 · ' + d.project.name);
     box.b.style.width = 'min(540px, 94vw)';
     var b = box.b;
-    b.appendChild(el('div', 'pr-steps', '任务会直接写入钉钉多维表格（一行一个任务），执行人会在钉钉里收到 @；写完立即出现在工作台任务管理里，无需等同步。'));
+    b.appendChild(el('div', 'pr-steps', '任务会直接写入钉钉多维表格：只在你选的数据表末尾追加一行数据，不加列、不改结构、不建视图；执行人会在钉钉里收到 @。写完立即出现在工作台任务管理里，无需等同步。'));
     var users = d.people || [];
     var picked = {};
     var fTitle = el('input'); fTitle.type = 'text'; fTitle.placeholder = '要做什么？一句话说清';
@@ -3190,7 +3190,7 @@ try {
   function openImport() {
     var box = mask0('导入项目（钉钉多维表格）');
     var b = box.b;
-    var tip = el('div', 'pr-steps', '① 把多维表格的分享链接贴进来 → ② 选一张数据表 → ③ 确认列的含义（AI 已预判）→ ④ 建档后 30 分钟内首批任务自动进工作台');
+    var tip = el('div', 'pr-steps', '① 把多维表格的分享链接贴进来 → ② 选一张数据表 → ③ 确认列的含义（AI 已预判）→ ④ 建档后 30 分钟内首批任务自动进工作台\n\n🔒 只读绑定：导入只在工作台建档，不在你的多维表格里新建任何列/视图/数据表，原表结构保持原样；之后每轮同步也只读取。');
     b.appendChild(tip);
     var rowIn = el('div'); rowIn.style.cssText = 'display:flex; gap:8px; margin-top:14px';
     var inp = el('input'); inp.type = 'text'; inp.placeholder = 'https://alidocs.dingtalk.com/i/nodes/…';
