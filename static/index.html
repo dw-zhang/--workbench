@@ -341,6 +341,8 @@
   .pr-steps { font-size: 12px; color: #6b7280; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; line-height: 1.8; }
   .pr-sheet { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-top: 10px; cursor: pointer; }
   .pr-sheet.on { border-color: #2563eb; background: #eff6ff; }
+  .pr-sheet.ok { border-color: #86efac; background: #f0fdf4; }
+  .pr-sheet.ok:hover { border-color: #16a34a; }
   .pr-tl { margin-top: 12px; }
   .pr-tl-row { display: grid; grid-template-columns: 200px 1fr 84px; gap: 10px; align-items: center; font-size: 12px; color: #374151; padding: 4px 0; }
   .pr-tl-track { position: relative; height: 14px; background: #f1f5f9; border-radius: 4px; }
@@ -3213,17 +3215,33 @@ try {
     inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') btnA.click(); });
   }
   function renderSheets(stage, link, box) {
-    stage.appendChild(el('div', null, '② 选择项目对应的数据表')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
+    stage.appendChild(el('div', null, '② 选择项目对应的数据表（带 ✓ 的表 AI 已识别出任务列，选它直接创建）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
     var sheets = (ANALYZE && ANALYZE.sheets) || [];
     var picked = null;
+    var ROLE_CN = { title: '任务名称', user: '执行人', status: '状态', priority: '优先级', due: '截止日期' };
     sheets.forEach(function(sh) {
       if (!sh.id) return;
-      var card = el('div', 'pr-sheet');
+      var ro = sh.roles || {};
+      var hit = ['title', 'user', 'status', 'due', 'priority'].filter(function(k) { return ro[k] && ro[k].field; });
+      var okCore = ro.title && ro.title.field && ro.user && ro.user.field;
+      var card = el('div', 'pr-sheet' + (okCore ? ' ok' : ''));
       card.innerHTML = '<b>' + esc(sh.name || sh.id.slice(0, 8)) + '</b> <span class="pr-conf">' + (sh.rows || 0) + ' 行 · 字段 ' + ((sh.fields || []).length) + ' 个' +
+        (okCore ? ' · ✓ 已自动识别，可直接创建' : (hit.length ? ' · 识别不全（缺' + hit.length + '）' : ' · ⚠ 未识别出任务列')) +
         (sh.bound ? ' · ⚠ 已绑定项目「' + esc(sh.bound_project) + '」' : '') +
         (sh.error ? ' · ❌ ' + esc(sh.error) : '') + '</span>';
       var sm = el('div', 'pr-conf', '样例：' + esc(sampleTxt(sh)));
       sm.style.marginTop = '6px'; card.appendChild(sm);
+      if (hit.length) {
+        var line = hit.map(function(k) { return ROLE_CN[k] + '=' + ro[k].field; }).join(' · ');
+        var sm2 = el('div', 'pr-conf', '已识别：' + esc(line));
+        sm2.style.cssText = 'margin-top:4px;color:#16a34a';
+        card.appendChild(sm2);
+      }
+      if (!okCore) {
+        var sm3 = el('div', 'pr-conf', '⚠ 这张表没有「任务名称」或「执行人」列 —— 多半不是任务表（如花名册/资料表），导入后任务无法按人归属，建议选其他表');
+        sm3.style.cssText = 'margin-top:4px;color:#dc2626';
+        card.appendChild(sm3);
+      }
       card.addEventListener('click', function() {
         Array.prototype.forEach.call(stage.querySelectorAll('.pr-sheet'), function(x) { x.classList.remove('on'); });
         card.classList.add('on');
@@ -3236,7 +3254,7 @@ try {
     function renderMap(stage2, sh, box) {
       mapBox.innerHTML = '';
       if (sh.bound) { mapBox.innerHTML = ''; return; }
-      mapBox.appendChild(el('div', null, '③ 确认各列的含义（AI 预判，可改）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
+      mapBox.appendChild(el('div', null, '③ AI 已按多维表格的列自动识别（通常无需修改，直接创建）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
       var roles = [['title', '任务名称 *'], ['user', '执行人 *'], ['status', '状态'], ['priority', '优先级'], ['due', '截止日期']];
       var map = el('div', 'pr-map');
       var sels = {};
