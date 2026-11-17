@@ -3207,12 +3207,12 @@ try {
       req('/api/projects/import', { link: inp.value.trim() }).then(function(d) {
         btnA.disabled = false; btnA.textContent = '分析结构';
         if (d.error) { stage.innerHTML = ''; stage.appendChild(el('div', 'pr-steps', '❌ ' + d.error)); return; }
-        ANALYZE = d; renderSheets(stage, inp.value.trim());
+        ANALYZE = d; renderSheets(stage, inp.value.trim(), box);
       });
     });
     inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') btnA.click(); });
   }
-  function renderSheets(stage, link) {
+  function renderSheets(stage, link, box) {
     stage.appendChild(el('div', null, '② 选择项目对应的数据表')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
     var sheets = (ANALYZE && ANALYZE.sheets) || [];
     var picked = null;
@@ -3228,12 +3228,12 @@ try {
         Array.prototype.forEach.call(stage.querySelectorAll('.pr-sheet'), function(x) { x.classList.remove('on'); });
         card.classList.add('on');
         picked = sh;
-        renderMap(stage, sh);
+        renderMap(stage, sh, box);
       });
       stage.appendChild(card);
     });
     var mapBox = el('div'); stage.appendChild(mapBox);
-    function renderMap(stage2, sh) {
+    function renderMap(stage2, sh, box) {
       mapBox.innerHTML = '';
       if (sh.bound) { mapBox.innerHTML = ''; return; }
       mapBox.appendChild(el('div', null, '③ 确认各列的含义（AI 预判，可改）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
