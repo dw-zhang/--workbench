@@ -350,6 +350,46 @@
   .pr-map label { color: #6b7280; }
   .pr-map select { width: 100%; }
   .pr-conf { font-size: 11px; color: #9ca3af; margin-left: 6px; }
+  /* ── 项目详情七视图 ── */
+  .pj-tabs { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 14px; border-bottom: 1px solid #e5e7eb; }
+  .pj-tab { border: none; background: transparent; font-size: 13px; color: #6b7280; padding: 8px 12px; cursor: pointer; border-bottom: 2px solid transparent; }
+  .pj-tab:hover { color: #2563eb; }
+  .pj-tab.on { color: #2563eb; border-bottom-color: #2563eb; font-weight: 700; }
+  .pj-view { margin-top: 14px; }
+  /* 看板 */
+  .pj-kb { display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
+  .pj-kb-col { flex: 1; min-width: 215px; background: #f8fafc; border-radius: 10px; padding: 10px; }
+  .pj-kb-head { font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .pj-kb-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; font-size: 12.5px; }
+  .pj-kb-card b { display: block; color: #111827; font-size: 13px; margin-bottom: 4px; font-weight: 600; }
+  /* 日历 */
+  .pj-cal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .pj-cal-head b { font-size: 14px; color: #111827; }
+  .pj-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .pj-cal-dow { font-size: 11px; color: #9ca3af; text-align: center; padding: 4px 0; }
+  .pj-cal-cell { min-height: 76px; background: #f8fafc; border-radius: 8px; padding: 4px 6px; overflow: hidden; }
+  .pj-cal-cell.out { opacity: .4; }
+  .pj-cal-cell.today { outline: 2px solid #dc2626; outline-offset: -2px; background: #fef2f2; }
+  .pj-cal-num { color: #6b7280; font-weight: 600; font-size: 11px; }
+  .pj-chip { display: block; font-size: 11px; border-radius: 5px; padding: 1px 5px; margin-top: 3px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
+  /* 画册 */
+  .pj-gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 12px; }
+  .pj-gal-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+  .pj-gal-card:hover { border-color: #93c5fd; box-shadow: 0 2px 8px rgba(37,99,235,.08); }
+  .pj-gal-top { height: 6px; }
+  .pj-gal-body { padding: 10px 12px; }
+  /* 表单 */
+  .pj-fm { display: grid; grid-template-columns: 265px 1fr; gap: 14px; align-items: start; }
+  .pj-fm-list { border: 1px solid #e5e7eb; border-radius: 10px; overflow: auto; max-height: 52vh; }
+  .pj-fm-item { padding: 9px 12px; font-size: 12.5px; cursor: pointer; border-bottom: 1px dashed #f0f1f5; color: #374151; }
+  .pj-fm-item:hover { background: #f8fafc; }
+  .pj-fm-item.on { background: #eff6ff; color: #2563eb; font-weight: 600; }
+  .pj-fm-form { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 18px; }
+  .pj-fm-row { display: grid; grid-template-columns: 100px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #f0f1f5; font-size: 13px; align-items: center; }
+  .pj-fm-row label { color: #9ca3af; }
+  /* 透视 */
+  .pj-pv th, .pj-pv td { text-align: center; padding: 6px 8px; font-size: 12.5px; }
+  .pj-pv th:first-child, .pj-pv td:first-child { text-align: left; }
   .cat-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #f0f1f5; font-size: 13px; }
   .cat-row:last-child { border-bottom: none; }
   .cat-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
@@ -2686,7 +2726,7 @@ try {
     });
   }
 
-  /* ── 项目详情弹层：统计 + 时间线 + 按人 + 任务表 ── */
+  /* ── 项目详情弹层：统计 + 七视图（看板/日历/甘特/画册/表单/透视表/地图） ── */
   var ST_COLOR = { '已完成': '#16a34a', '进行中': '#2563eb', '待处理': '#f59e0b' };
   function tagOf(st) {
     var c = ST_COLOR[st] || '#6b7280';
@@ -2694,11 +2734,28 @@ try {
     s.style.cssText = 'background:' + c + '1a;color:' + c;
     return s;
   }
+  function stColor(s) { return ST_COLOR[s] || '#6b7280'; }
+  function dayOf(t) { return t['截止时间'] ? String(t['截止时间']).slice(0, 10) : ''; }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function todayS() { var n = new Date(); return n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate()); }
+  function taskLink(t, maxLen) {
+    var name = t['任务名称'] || '（未命名）';
+    var txt = maxLen ? name.slice(0, maxLen) : name;
+    var u = t['处理链接'];
+    if (u) {
+      var a = el('a', null, txt);
+      a.href = u; a.target = '_blank'; a.rel = 'noopener'; a.title = name;
+      a.style.color = '#2563eb'; a.style.textDecoration = 'none';
+      return a;
+    }
+    var s = el('span', null, txt); s.title = name; return s;
+  }
   function openDetail(pid) {
     req('/api/projects/detail?id=' + encodeURIComponent(pid)).then(function(d) {
       if (!d || !d.project) { alert('项目加载失败'); return; }
       var st = d.stats || {}, tasks = d.tasks || [];
       var box = mask0(d.project.name + ' · 项目详情');
+      box.b.style.width = 'min(1100px, 96vw)';
       var b = box.b;
       if (d.project.status === 'paused') {
         var warn = el('div', 'pr-steps'); warn.style.cssText = 'background:#fef2f2;border-color:#fecaca;color:#991b1b';
@@ -2715,79 +2772,330 @@ try {
         nums.appendChild(s);
       });
       b.appendChild(nums);
-      /* 时间线（甘特）：按截止日期把任务排到轨道上 */
-      var dated = tasks.filter(function(t) { return t['截止时间']; })
-        .sort(function(a, b2) { return String(a['截止时间']) < String(b2['截止时间']) ? -1 : 1; });
-      if (dated.length) {
-        var tl = el('div', 'pr-tl');
-        tl.appendChild(el('div', null, '时间线（按完成节点排序）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
-        var lo = String(dated[0]['截止时间']).slice(0, 10), hi = String(dated[dated.length - 1]['截止时间']).slice(0, 10);
-        var loT = new Date(lo + 'T00:00:00').getTime(), hiT = new Date(hi + 'T23:59:59').getTime();
+
+      /* 视图切换 */
+      var ORDER = ['已完成', '进行中', '待处理'];
+      function stList() {
+        var set = {}; tasks.forEach(function(t) { set[t['状态'] || '未填'] = 1; });
+        var out = ORDER.filter(function(s) { return set[s]; });
+        Object.keys(set).sort().forEach(function(s) { if (ORDER.indexOf(s) < 0) out.push(s); });
+        return out;
+      }
+      var tabbar = el('div', 'pj-tabs');
+      var body = el('div', 'pj-view');
+      [['ov', '📋 概览'], ['kb', '🗂 看板视图'], ['cal', '📅 日历视图'], ['gt', '📊 甘特视图'],
+       ['gal', '🖼 画册视图'], ['fm', '📝 表单视图'], ['pv', '🔢 透视表视图'], ['map', '🗺 地图视图']]
+      .forEach(function(vv) {
+        var t = el('button', 'pj-tab', vv[1]); t.type = 'button'; t.dataset.v = vv[0];
+        t.addEventListener('click', function() { pick(vv[0]); });
+        tabbar.appendChild(t);
+      });
+      b.appendChild(tabbar); b.appendChild(body);
+      var R = {};
+      function pick(v) {
+        Array.prototype.forEach.call(tabbar.children, function(x) { x.classList.toggle('on', x.dataset.v === v); });
+        body.innerHTML = '';
+        try { R[v](body); } catch (e) { body.appendChild(el('div', 'empty', '该视图渲染失败：' + (e && e.message))); }
+      }
+
+      /* ① 概览：按人分布 + 任务明细 */
+      R.ov = function(box2) {
+        if ((st.members || []).length) {
+          box2.appendChild(el('div', null, '按人分布')).style.cssText = 'font-size:13px;font-weight:700;color:#111827';
+          var tb = el('table', 'tasks'); tb.style.marginTop = '8px';
+          tb.innerHTML = '<thead><tr><th>成员</th><th>任务</th><th>已完成</th><th>逾期</th></tr></thead>';
+          var tb2 = el('tbody');
+          st.members.forEach(function(m) {
+            var tr = el('tr');
+            tr.appendChild(el('td', null, m.name));
+            tr.appendChild(el('td', null, String(m.total)));
+            tr.appendChild(el('td', null, String(m.done)));
+            var od = el('td', null, String(m.overdue)); if (m.overdue) od.style.color = '#dc2626';
+            tr.appendChild(od);
+            tb2.appendChild(tr);
+          });
+          tb.appendChild(tb2); box2.appendChild(tb);
+        }
+        box2.appendChild(el('div', null, '任务明细（' + tasks.length + '）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
+        var t2 = el('table', 'tasks'); t2.style.marginTop = '8px';
+        t2.innerHTML = '<thead><tr><th>任务名称</th><th>负责人</th><th>优先级</th><th>完成节点</th><th>状态</th></tr></thead>';
+        var t3 = el('tbody');
+        if (!tasks.length) {
+          var tr0 = el('tr'); var td0 = el('td', 'empty', '该项目暂无你名下的任务'); td0.colSpan = 5; tr0.appendChild(td0); t3.appendChild(tr0);
+        } else {
+          tasks.forEach(function(t) {
+            var tr = el('tr');
+            var tdN = el('td'); tdN.appendChild(taskLink(t));
+            tr.appendChild(tdN);
+            tr.appendChild(el('td', null, t['负责人'] || '—'));
+            tr.appendChild(el('td', null, t['优先级'] || '—'));
+            tr.appendChild(el('td', null, dayOf(t) || '—'));
+            var tdS = el('td'); tdS.appendChild(tagOf(t['状态'])); tr.appendChild(tdS);
+            t3.appendChild(tr);
+          });
+        }
+        t2.appendChild(t3); box2.appendChild(t2);
+      };
+
+      /* ② 看板视图：按状态分栏 */
+      R.kb = function(box2) {
+        var wrap = el('div', 'pj-kb');
+        stList().forEach(function(s) {
+          var c = stColor(s);
+          var col = el('div', 'pj-kb-col');
+          var list = tasks.filter(function(t) { return (t['状态'] || '未填') === s; });
+          var head = el('div', 'pj-kb-head');
+          head.appendChild(el('span', null, s)).style.color = c;
+          head.appendChild(el('span', null, String(list.length))).style.cssText = 'color:#9ca3af;font-weight:400';
+          col.appendChild(head);
+          if (!list.length) col.appendChild(el('div', null, '—')).style.cssText = 'color:#cbd5e1;font-size:12px;text-align:center;padding:12px 0';
+          list.forEach(function(t) {
+            var card = el('div', 'pj-kb-card');
+            var ln = el('b'); ln.appendChild(taskLink(t, 30)); card.appendChild(ln);
+            var meta = el('div', null, (t['负责人'] || '未分配') + (dayOf(t) ? ' · ' + dayOf(t).slice(5) : '') + (t['优先级'] ? ' · ' + t['优先级'] : ''));
+            meta.style.cssText = 'color:#9ca3af;font-size:11.5px';
+            card.appendChild(meta);
+            if (dayOf(t) && dayOf(t) < todayS() && s !== '已完成') card.style.borderLeft = '3px solid #dc2626';
+            col.appendChild(card);
+          });
+          wrap.appendChild(col);
+        });
+        box2.appendChild(wrap);
+        box2.appendChild(el('div', 'note', '按「状态」列分栏，与多维表格看板视图同口径 · 左红边 = 已逾期未完成 · 点击任务名打开钉钉原始记录'));
+      };
+
+      /* ③ 日历视图：按截止日期落格 */
+      var calCur = null;
+      R.cal = function(box2) {
+        var byDay = {};
+        tasks.forEach(function(t) { var dd = dayOf(t); if (dd) (byDay[dd] = byDay[dd] || []).push(t); });
+        if (!calCur) {
+          var cnt = {};
+          Object.keys(byDay).forEach(function(k) { var m = k.slice(0, 7); cnt[m] = (cnt[m] || 0) + 1; });
+          var best = todayS().slice(0, 7), bn = 0;
+          Object.keys(cnt).forEach(function(m) { if (cnt[m] > bn) { bn = cnt[m]; best = m; } });
+          calCur = { y: +best.slice(0, 4), m: +best.slice(5, 7) };
+        }
+        var head = el('div', 'pj-cal-head');
+        var prev = el('button', 'sb-navbtn', '‹'); prev.type = 'button';
+        var next = el('button', 'sb-navbtn', '›'); next.type = 'button';
+        prev.addEventListener('click', function() { calCur.m--; if (calCur.m < 1) { calCur.m = 12; calCur.y--; } pick('cal'); });
+        next.addEventListener('click', function() { calCur.m++; if (calCur.m > 12) { calCur.m = 1; calCur.y++; } pick('cal'); });
+        head.appendChild(prev);
+        head.appendChild(el('b', null, calCur.y + ' 年 ' + calCur.m + ' 月'));
+        head.appendChild(next);
+        var todayBtn = el('button', 'btn-mini', '今天'); todayBtn.type = 'button';
+        todayBtn.addEventListener('click', function() { var n = new Date(); calCur = { y: n.getFullYear(), m: n.getMonth() + 1 }; pick('cal'); });
+        head.appendChild(todayBtn);
+        box2.appendChild(head);
+        var grid = el('div', 'pj-cal-grid');
+        ['一', '二', '三', '四', '五', '六', '日'].forEach(function(w) { grid.appendChild(el('div', 'pj-cal-dow', w)); });
+        var off = (new Date(calCur.y, calCur.m - 1, 1).getDay() + 6) % 7;
+        var dim = new Date(calCur.y, calCur.m, 0).getDate();
+        var tS = todayS();
+        for (var i = 0; i < off; i++) grid.appendChild(el('div', 'pj-cal-cell out'));
+        for (var dd2 = 1; dd2 <= dim; dd2++) {
+          var key = calCur.y + '-' + pad2(calCur.m) + '-' + pad2(dd2);
+          var cell = el('div', 'pj-cal-cell' + (key === tS ? ' today' : ''));
+          cell.appendChild(el('div', 'pj-cal-num', String(dd2)));
+          var list = byDay[key] || [];
+          list.slice(0, 2).forEach(function(t) {
+            var chip = el('span', 'pj-chip', (t['任务名称'] || '').slice(0, 12));
+            chip.style.background = stColor(t['状态']);
+            chip.title = (t['任务名称'] || '') + ' · ' + (t['负责人'] || '未分配') + (t['状态'] ? ' · ' + t['状态'] : '');
+            cell.appendChild(chip);
+          });
+          if (list.length > 2) cell.appendChild(el('div', null, '+' + (list.length - 2) + ' 更多')).style.cssText = 'font-size:10px;color:#9ca3af;margin-top:2px';
+          grid.appendChild(cell);
+        }
+        box2.appendChild(grid);
+        box2.appendChild(el('div', 'note', '按「截止时间」落格 · 绿=已完成 蓝=进行中 黄=待处理 · ‹ › 翻月，默认打开任务最多的月份'));
+      };
+
+      /* ④ 甘特视图：区间条 + 月份刻度 + 今天红线 */
+      R.gt = function(box2) {
+        var dated = tasks.filter(function(t) { return dayOf(t); })
+          .sort(function(a, b2) { return dayOf(a) < dayOf(b2) ? -1 : 1; });
+        if (!dated.length) { box2.appendChild(el('div', 'empty', '没有带截止日期的任务，无法渲染甘特图')); return; }
+        var loS = dayOf(dated[0]), hiS = dayOf(dated[dated.length - 1]), tS = todayS();
+        if (tS < loS) loS = tS;
+        if (tS > hiS) hiS = tS;
+        var loT = new Date(loS + 'T00:00:00').getTime(), hiT = new Date(hiS + 'T23:59:59').getTime();
         var span = Math.max(1, hiT - loT);
         var todayPct = Math.round((Date.now() - loT) / span * 100);
+        box2.appendChild(el('div', null, '时间线（按完成节点排序 · 色条长度 = 距截止节点的区间）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827';
+        /* 月份刻度（与轨道列对齐：200px 名称 + 10px 间距） */
+        var scale = el('div'); scale.style.cssText = 'position:relative;height:18px;margin:4px 94px 2px 210px;';
+        (function() {
+          var y = +loS.slice(0, 4), m = +loS.slice(5, 7);
+          while (true) {
+            var mt = new Date(y, m - 1, 1).getTime();
+            if (mt > hiT) break;
+            var pct = Math.round((mt - loT) / span * 100);
+            if (pct >= 0 && pct < 100) {
+              var lb = el('span', null, y + '-' + pad2(m));
+              lb.style.cssText = 'position:absolute;left:' + pct + '%;font-size:10.5px;color:#9ca3af;border-left:1px dashed #e5e7eb;padding-left:3px';
+              scale.appendChild(lb);
+            }
+            m++; if (m > 12) { m = 1; y++; }
+          }
+        })();
+        var tl = el('div', 'pr-tl');
         dated.slice(0, 40).forEach(function(t) {
           var row = el('div', 'pr-tl-row');
-          var nm = el('div', null, String(t['任务名称'] || '').slice(0, 26));
-          nm.title = t['任务名称']; nm.style.overflow = 'hidden'; nm.style.textOverflow = 'ellipsis'; nm.style.whiteSpace = 'nowrap';
+          var nm = el('div'); nm.appendChild(taskLink(t, 24));
+          nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
           row.appendChild(nm);
           var track = el('div', 'pr-tl-track');
-          var dueS = String(t['截止时间']).slice(0, 10);
-          var pct = Math.round((new Date(dueS + 'T12:00:00').getTime() - loT) / span * 100);
+          var pct = Math.round((new Date(dayOf(t) + 'T12:00:00').getTime() - loT) / span * 100);
           var bar = el('div', 'pr-tl-bar');
-          var c = ST_COLOR[t['状态']] || '#6b7280';
-          bar.style.cssText = 'left:' + Math.max(0, pct - 4) + '%;width:8%;background:' + c;
+          bar.style.cssText = 'left:0;width:' + Math.max(2, pct) + '%;background:' + stColor(t['状态']) + 'b3';
           track.appendChild(bar);
           if (todayPct > 0 && todayPct < 100) {
-            var td = el('div'); td.style.cssText = 'position:absolute;top:-2px;left:' + todayPct + '%;width:1px;height:18px;background:#dc2626';
+            var td = el('div'); td.style.cssText = 'position:absolute;top:-2px;left:' + todayPct + '%;width:1px;height:18px;background:#dc2626;z-index:2';
             track.appendChild(td);
           }
           row.appendChild(track);
-          row.appendChild(el('div', 'pr-tl-when', dueS.slice(5)));
+          row.appendChild(el('div', 'pr-tl-when', dayOf(t).slice(5)));
           tl.appendChild(row);
         });
-        var cap = el('div', 'note', '红线 = 今天 · 色条 = 截止节点（绿已完成 / 蓝进行中 / 黄待处理）· 最多显示 40 条');
-        tl.appendChild(cap);
-        b.appendChild(tl);
-      }
-      /* 按人统计 */
-      if ((st.members || []).length) {
-        b.appendChild(el('div', null, '按人分布')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
-        var tb = el('table', 'tasks'); tb.style.marginTop = '8px';
-        tb.innerHTML = '<thead><tr><th>成员</th><th>任务</th><th>已完成</th><th>逾期</th></tr></thead>';
-        var tb2 = el('tbody');
-        st.members.forEach(function(m) {
-          var tr = el('tr');
-          tr.appendChild(el('td', null, m.name));
-          tr.appendChild(el('td', null, String(m.total)));
-          tr.appendChild(el('td', null, String(m.done)));
-          var od = el('td', null, String(m.overdue)); if (m.overdue) od.style.color = '#dc2626';
-          tr.appendChild(od);
-          tb2.appendChild(tr);
-        });
-        tb.appendChild(tb2); b.appendChild(tb);
-      }
-      /* 任务明细 */
-      b.appendChild(el('div', null, '任务明细（' + tasks.length + '）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
-      var t2 = el('table', 'tasks'); t2.style.marginTop = '8px';
-      t2.innerHTML = '<thead><tr><th>任务名称</th><th>负责人</th><th>完成节点</th><th>状态</th></tr></thead>';
-      var t3 = el('tbody');
-      if (!tasks.length) {
-        var tr0 = el('tr'); var td0 = el('td', 'empty', '该项目暂无你名下的任务'); td0.colSpan = 4; tr0.appendChild(td0); t3.appendChild(tr0);
-      } else {
+        box2.appendChild(scale);
+        box2.appendChild(tl);
+        box2.appendChild(el('div', 'note', '红线 = 今天 · 绿已完成 / 蓝进行中 / 黄待处理 · 最多显示 40 条'));
+      };
+
+      /* ⑤ 画册视图：卡片画廊 */
+      R.gal = function(box2) {
+        if (!tasks.length) { box2.appendChild(el('div', 'empty', '暂无任务')); return; }
+        var grid = el('div', 'pj-gal');
         tasks.forEach(function(t) {
-          var tr = el('tr');
-          var tdN = el('td');
-          var u = t['处理链接'];
-          if (u) { var a = el('a', null, t['任务名称']); a.href = u; a.target = '_blank'; a.rel = 'noopener'; tdN.appendChild(a); }
-          else tdN.textContent = t['任务名称'] || '';
-          tr.appendChild(tdN);
-          tr.appendChild(el('td', null, t['负责人'] || '—'));
-          tr.appendChild(el('td', null, t['截止时间'] ? String(t['截止时间']).slice(0, 10) : '—'));
-          var tdS = el('td'); tdS.appendChild(tagOf(t['状态'])); tr.appendChild(tdS);
-          t3.appendChild(tr);
+          var card = el('div', 'pj-gal-card');
+          var top = el('div', 'pj-gal-top'); top.style.background = stColor(t['状态']); card.appendChild(top);
+          var bd = el('div', 'pj-gal-body');
+          var ln = el('b'); ln.appendChild(taskLink(t));
+          ln.style.cssText = 'display:block;font-size:13px;color:#111827;margin-bottom:6px;font-weight:600';
+          bd.appendChild(ln);
+          var owner = el('div'); owner.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;color:#374151';
+          var av = el('span', null, (t['负责人'] || '未').slice(0, 1));
+          av.style.cssText = 'width:20px;height:20px;border-radius:50%;background:#dbeafe;color:#2563eb;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0';
+          owner.appendChild(av); owner.appendChild(document.createTextNode(t['负责人'] || '未分配'));
+          bd.appendChild(owner);
+          var meta = el('div', null, (dayOf(t) ? '截止 ' + dayOf(t) : '未设截止') + (t['优先级'] ? ' · ' + t['优先级'] : ''));
+          meta.style.cssText = 'font-size:11.5px;color:#9ca3af;margin-top:5px';
+          bd.appendChild(meta);
+          card.appendChild(bd);
+          grid.appendChild(card);
         });
-      }
-      t2.appendChild(t3); b.appendChild(t2);
+        box2.appendChild(grid);
+      };
+
+      /* ⑥ 表单视图：左选任务，右侧只读表单 */
+      var fmIdx = 0;
+      R.fm = function(box2) {
+        if (!tasks.length) { box2.appendChild(el('div', 'empty', '暂无任务')); return; }
+        if (fmIdx >= tasks.length) fmIdx = 0;
+        var wrap = el('div', 'pj-fm');
+        var list = el('div', 'pj-fm-list');
+        var form = el('div', 'pj-fm-form');
+        function drawForm() {
+          var t = tasks[fmIdx];
+          form.innerHTML = '';
+          form.appendChild(el('div', null, '任务详情')).style.cssText = 'font-weight:700;color:#111827;font-size:14px;margin-bottom:6px';
+          [['任务名称', t['任务名称']], ['状态', t['状态'] || '未填'], ['优先级', t['优先级'] || '未设置'],
+           ['截止时间', dayOf(t) || '未设置'], ['负责人', t['负责人'] || '未分配'], ['来源应用', t['来源应用'] || '—'],
+           ['更新时间', t['更新时间'] || '—'], ['处理链接', t['处理链接'] || '']].forEach(function(kv) {
+            var row = el('div', 'pj-fm-row');
+            row.appendChild(el('label', null, kv[0]));
+            var v = el('div');
+            if (kv[0] === '处理链接' && kv[1]) {
+              var a = el('a', null, '在钉钉中打开 ↗'); a.href = kv[1]; a.target = '_blank'; a.rel = 'noopener';
+              a.style.color = '#2563eb';
+              v.appendChild(a);
+            } else if (kv[0] === '状态') { v.appendChild(tagOf(t['状态'])); }
+            else v.textContent = kv[1] || '—';
+            row.appendChild(v);
+            form.appendChild(row);
+          });
+        }
+        tasks.forEach(function(t, i) {
+          var it = el('div', 'pj-fm-item' + (i === fmIdx ? ' on' : ''));
+          var nm = el('div', null, String(t['任务名称'] || '（未命名）'));
+          nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+          it.appendChild(nm);
+          var sub = el('div', null, (t['负责人'] || '未分配') + (dayOf(t) ? ' · ' + dayOf(t).slice(5) : ''));
+          sub.style.cssText = 'font-size:11px;color:#9ca3af;margin-top:2px';
+          it.appendChild(sub);
+          it.addEventListener('click', function() {
+            fmIdx = i;
+            Array.prototype.forEach.call(list.children, function(x, j) { x.classList.toggle('on', j === i); });
+            drawForm();
+          });
+          list.appendChild(it);
+        });
+        drawForm();
+        wrap.appendChild(list); wrap.appendChild(form);
+        box2.appendChild(wrap);
+        box2.appendChild(el('div', 'note', '字段排布与多维表格「表单视图」一致 · 只读展示，修改请在钉钉多维表格里进行'));
+      };
+
+      /* ⑦ 透视表视图：执行人×状态 / 月份×状态 */
+      R.pv = function(box2) {
+        if (!tasks.length) { box2.appendChild(el('div', 'empty', '暂无任务')); return; }
+        var sts = stList();
+        function pivot(getKey, rowLabel, title) {
+          var rows = {};
+          tasks.forEach(function(t) {
+            var k = getKey(t) || '—';
+            var s = t['状态'] || '未填';
+            rows[k] = rows[k] || {};
+            rows[k][s] = (rows[k][s] || 0) + 1;
+          });
+          box2.appendChild(el('div', null, title)).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-bottom:6px';
+          var tb = el('table', 'tasks pj-pv');
+          tb.innerHTML = '<thead><tr><th>' + rowLabel + '</th>' + sts.map(function(s) { return '<th>' + esc(s) + '</th>'; }).join('') + '<th>合计</th></tr></thead>';
+          var tby = el('tbody');
+          var keys = Object.keys(rows).sort(function(a, b2) {
+            var ta = 0, tc = 0;
+            Object.keys(rows[a]).forEach(function(s) { ta += rows[a][s]; });
+            Object.keys(rows[b2]).forEach(function(s) { tc += rows[b2][s]; });
+            return tc - ta;
+          });
+          keys.forEach(function(k) {
+            var tr = el('tr');
+            tr.appendChild(el('td', null, k));
+            var tot = 0;
+            sts.forEach(function(s) { var n = rows[k][s] || 0; tot += n; tr.appendChild(el('td', null, n ? String(n) : '·')); });
+            var tdT = el('td', null, String(tot)); tdT.style.fontWeight = '700';
+            tr.appendChild(tdT);
+            tby.appendChild(tr);
+          });
+          tb.appendChild(tby); box2.appendChild(tb);
+        }
+        pivot(function(t) { return t['负责人'] || ''; }, '执行人', '执行人 × 状态');
+        box2.appendChild(el('div')).style.marginTop = '20px';
+        pivot(function(t) { return dayOf(t) ? dayOf(t).slice(0, 7) : ''; }, '月份', '月份 × 状态');
+        box2.appendChild(el('div', 'note', '与多维表格「透视表视图」同口径 · 数字为任务条数，· 表示 0'));
+      };
+
+      /* ⑧ 地图视图：需多维表提供位置字段 */
+      R.map = function(box2) {
+        var card = el('div', 'pr-steps');
+        card.style.cssText = 'line-height:2;padding:18px 20px;font-size:13px';
+        card.innerHTML = '<b style="color:#111827;font-size:14px">🗺 地图视图</b><br>' +
+          '钉钉多维表格的地图视图依赖表格里的「地址 / 位置」类型字段。<br>' +
+          '当前项目绑定的数据表没有位置类字段，同步到的数据里也没有地址或经纬度，因此这里暂时无法渲染地图。<br>' +
+          '<b>启用方法：</b>在钉钉多维表格里加一列「位置」类型字段（或地址文本列），等下一轮自动同步（约 30 分钟）后，此处会自动出现任务分布地图。';
+        box2.appendChild(card);
+        if (d.project.url) {
+          var btn2 = el('button', 'btn-mini primary', '去钉钉多维表格配置位置字段');
+          btn2.type = 'button'; btn2.style.marginTop = '12px';
+          btn2.addEventListener('click', function() { window.open(d.project.url, '_blank'); });
+          box2.appendChild(btn2);
+        }
+      };
+
+      pick('ov');
+
       var acts = el('div', 'wb-actions');
       if (d.project.url) {
         var bOpen = el('button', 'btn-mini primary', '打开钉钉多维表格');
