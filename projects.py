@@ -148,6 +148,36 @@ def _name_map():
     return out
 
 
+def _status_norm(txt):
+    """状态归一：先精确映射，再按关键词兜底（适配「延期完成/按时完成/进行中/未开始」等自定义状态）"""
+    s = str(txt or '').strip()
+    if not s:
+        return '待处理'
+    if s in STATUS_MAP:
+        return STATUS_MAP[s]
+    if '完成' in s or '关闭' in s or '归档' in s:
+        return '已完成'
+    if '进行' in s or '推进' in s or '处理中' in s or '执行中' in s:
+        return '进行中'
+    if '未开始' in s or '待' in s or '计划' in s or '延期' in s or '逾期' in s:
+        return '待处理'
+    return s
+
+
+def _pri_norm(txt):
+    """优先级归一：高/中/低 + 紧急程度兜底"""
+    s = str(txt or '').strip()
+    if not s:
+        return '中'
+    if s in PRIORITY_MAP:
+        return PRIORITY_MAP[s]
+    if '紧急' in s or '严重' in s or '高' in s:
+        return '高'
+    if '低' in s:
+        return '低'
+    return '中'
+
+
 def _auto_field_map(names, recs):
     """自动推断任务字段映射：精确列名 → 子串包含兜底（按提示词优先级遍历）。
     仅当能同时确定「任务名称 + 执行人」且执行人列可解析（钉钉成员 / 关联记录 / 文本姓名）时返回映射，
@@ -219,7 +249,11 @@ def analyze_link(link):
 
 # ── 项目 CRUD（供 API 调用） ──────────────────────────────────────────
 def create_project(name, base_id, sheet_id, sheet_name='', url='', field_map=None,
-                   owner_person_id=''):
+                   owner_person_id='', mode='auto'):
+    """建项目档案。
+    mode='auto'（默认）：服务端自动识别任务列（任务名称+执行人），识别成功即任务项目（七视图），
+                        识别不出则退化为原样镜像展示 —— 全程无需人填字段映射
+    mode='raw'         ：强制原样导入（整表镜像，不做任务归属）"""
     name = str(name or sheet_name or '未命名项目').strip()[:60]
     if not base_id or not sheet_id:
         raise NotableError('缺少 baseId 或 sheetId')
@@ -227,9 +261,19 @@ def create_project(name, base_id, sheet_id, sheet_name='', url='', field_map=Non
         raise NotableError('这张数据表已绑定项目「%s」，一张表只能是一个项目' %
                            db.project_by_sheet(base_id, sheet_id)['name'])
     fm = {k: str((field_map or {}).get(k) or '').strip() for k in ROLES}
-    if not fm['title'] or not fm['user']:
-        # 原样导入模式：不做任务字段映射，整表原样镜像展示（不进任务管理、不按人归属）
-        fm = {}
+    if mode != 'raw' and not (fm.get('title') and fm.get('user')):
+        # 服务端自动识别：拉一次记录，按列名 + 值形态推断任务字段
+        try:
+            tok = _token()
+            _, recs = _iter_records(tok, base_id, sheet_id)
+            names = set()
+            for r in recs:
+                names.update((r.get('fields') or {}).keys())
+            fm = _auto_field_map(names, recs) or {}
+        except NotableError:
+            fm = {}
+    if not (fm.get('title') and fm.get('user')):
+        fm = {}          # 原样模式
     return db.project_add(name, base_id, sheet_id, sheet_name=sheet_name, url=url,
                           field_map=fm, owner_person_id=owner_person_id)
 
@@ -424,9 +468,8 @@ def sync_projects(cfg, say):
             if not title:
                 skip += 1
                 continue
-            status = STATUS_MAP.get(_cell_text(f.get(f_status)),
-                                    _cell_text(f.get(f_status)) or '待处理') if f_status else '待处理'
-            pri = PRIORITY_MAP.get(_cell_text(f.get(f_pri)), '中') if f_pri else '中'
+            status = _status_norm(_cell_text(f.get(f_status))) if f_status else '待处理'
+            pri = _pri_norm(_cell_text(f.get(f_pri))) if f_pri else '中'
             due = _cell_date(f.get(f_due)) if f_due else ''
             owners = [nm for _, nm in pairs]
             props = {

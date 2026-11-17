@@ -1385,11 +1385,16 @@ class Handler(BaseHTTPRequestHandler):
                         body.get('name') or '', body.get('baseId') or '', body.get('sheetId') or '',
                         sheet_name=body.get('sheetName') or '', url=body.get('url') or '',
                         field_map=body.get('fieldMap') or {},
-                        owner_person_id=s.get('person_id') or '')
+                        owner_person_id=s.get('person_id') or '',
+                        mode=body.get('mode') or 'auto')
                 except projects_mod.NotableError as e:
                     return self._send(400, {'error': str(e)})
-                db.log('config', True, 0, '新建项目 %s' % (body.get('name') or ''))
-                return self._send(200, {'ok': True, 'project_id': pid})
+                p_new = db.project_get(pid)
+                p_mode = projects_mod.project_mode(p_new) if p_new else 'raw'
+                db.log('config', True, 0, '新建项目 %s（%s）' % (body.get('name') or '',
+                                                              '任务看板' if p_mode == 'task' else '原样'))
+                return self._send(200, {'ok': True, 'project_id': pid, 'mode': p_mode,
+                                        'field_map': (p_new or {}).get('field_map') or {}})
             if p == '/api/projects/task/new':
                 p0 = db.project_get(body.get('projectId') or '')
                 if not p0:
