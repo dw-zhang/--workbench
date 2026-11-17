@@ -133,9 +133,16 @@ def create_project(name, base_id, sheet_id, sheet_name='', url='', field_map=Non
                            db.project_by_sheet(base_id, sheet_id)['name'])
     fm = {k: str((field_map or {}).get(k) or '').strip() for k in ROLES}
     if not fm['title'] or not fm['user']:
-        raise NotableError('字段映射不完整：至少需要「任务名称」和「执行人」两列（否则无法按人归属）')
+        # 原样导入模式：不做任务字段映射，整表原样镜像展示（不进任务管理、不按人归属）
+        fm = {}
     return db.project_add(name, base_id, sheet_id, sheet_name=sheet_name, url=url,
                           field_map=fm, owner_person_id=owner_person_id)
+
+
+def project_mode(p):
+    """task=任务项目（按人归属） / raw=原样导入（整表镜像）"""
+    fm = p.get('field_map') or {}
+    return 'task' if (fm.get('title') and fm.get('user')) else 'raw'
 
 
 def delete_project(pid, by_admin=False, by_person=''):
@@ -203,14 +210,18 @@ def sync_projects(cfg, say):
     for p in prjs:
         pid, pname = p['project_id'], p['name']
         fm = p.get('field_map') or {}
-        if not fm.get('title') or not fm.get('user'):
-            stat['err'].append('项目 %s：字段映射不完整，跳过' % pname)
-            continue
         first = not settings.g('project:imported:%s' % pid)
         try:
             sname, recs = _iter_records(tok, p['base_id'], p['sheet_id'])
         except NotableError as e:
             stat['err'].append('项目 %s：%s' % (pname, e))
+            continue
+        # ── 原样导入项目：不做字段映射，整表镜像，不进任务管理 ──
+        if not fm.get('title') or not fm.get('user'):
+            db.raw_replace(pid, recs)
+            say('项目 %s（原样导入）：镜像 %d 行' % (pname, len(recs)))
+            if first:
+                db.cfg_set({'project:imported:%s' % pid: db.now()})
             continue
         if not recs:
             say('项目 %s：数据表为空' % pname)

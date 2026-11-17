@@ -2703,7 +2703,7 @@ try {
       if (p.status === 'paused') head.appendChild(el('span', 'pr-tag', '已暂停')).style.cssText = 'background:#fee2e2;color:#dc2626';
       if (p.owner) head.appendChild(el('span', 'pr-tag', '我负责')).style.cssText = 'background:#dbeafe;color:#2563eb';
       card.appendChild(head);
-      card.appendChild(el('div', 'pr-meta', (p.sheet_name || '多维表格') + ' · ' + (p.mine_only ? '我的名下任务' : '全项目任务')));
+      card.appendChild(el('div', 'pr-meta', (p.mode === 'raw' ? '📄 原样导入 · ' : '') + (p.sheet_name || '多维表格') + ' · ' + (p.mine_only ? '我的名下任务' : '全项目任务')));
       var bar = el('div', 'pr-bar'); var fill = el('i'); fill.style.width = (st.progress || 0) + '%'; bar.appendChild(fill);
       card.appendChild(bar);
       var nums = el('div', 'pr-nums');
@@ -2774,6 +2774,38 @@ try {
         nums.appendChild(s);
       });
       b.appendChild(nums);
+
+      /* ── 原样导入项目：整表镜像，只读展示 ── */
+      if (d.project.mode === 'raw') {
+        var raw = d.raw || { columns: [], rows: [] };
+        b.appendChild(el('div', 'pr-steps', '📄 原样导入：以下数据与钉钉多维表格完全一致（列、行原样镜像，只读），每 30 分钟自动同步。不进任务管理、不按人归属，也不改动原表任何内容。'));
+        b.appendChild(el('div', null, raw.rows.length + ' 行 · ' + raw.columns.length + ' 列')).style.cssText = 'font-size:12px;color:#6b7280;margin-top:10px';
+        var wrapR = el('div'); wrapR.style.cssText = 'overflow:auto;border:1px solid #e5e7eb;border-radius:10px;margin-top:8px;max-height:52vh';
+        var tR = el('table', 'tasks');
+        tR.innerHTML = '<thead><tr>' + raw.columns.map(function(c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead>';
+        var tbR = el('tbody');
+        if (!raw.rows.length) {
+          var trE = el('tr'); var tdE = el('td', 'empty', '表里暂无数据');
+          tdE.colSpan = Math.max(1, raw.columns.length); trE.appendChild(tdE); tbR.appendChild(trE);
+        }
+        raw.rows.forEach(function(r) {
+          var tr = el('tr');
+          raw.columns.forEach(function(c, ci) {
+            tr.appendChild(el('td', null, r.cells[ci] || ''));
+          });
+          tbR.appendChild(tr);
+        });
+        tR.appendChild(tbR); wrapR.appendChild(tR); b.appendChild(wrapR);
+        var actsR = el('div', 'wb-actions');
+        if (d.project.url) {
+          var bO = el('button', 'btn-mini primary', '打开钉钉多维表格');
+          bO.addEventListener('click', function() { window.open(d.project.url, '_blank'); });
+          actsR.appendChild(bO);
+        }
+        actsR.appendChild(el('button', 'btn-mini', '关闭')).addEventListener('click', function() { box.close(); });
+        b.appendChild(actsR);
+        return;
+      }
 
       /* 视图切换 */
       var ORDER = ['已完成', '进行中', '待处理'];
@@ -3280,22 +3312,29 @@ try {
       mapBox.appendChild(nameRow);
       var acts = el('div', 'wb-actions');
       var btnC = el('button', 'btn-mini primary', '创建项目');
-      btnC.style.padding = '8px 16px';
-      btnC.addEventListener('click', function() {
-        var fm = {};
-        Object.keys(sels).forEach(function(k) { if (sels[k].value) fm[k] = sels[k].value; });
-        if (!fm.title || !fm.user) { alert('「任务名称」和「执行人」两列必须指定 —— 否则任务无法按人归属'); return; }
-        btnC.disabled = true; btnC.textContent = '创建中…';
+      var btnR = el('button', 'btn-mini', '📄 原样导入（不做字段映射）');
+      function doCreate(fm, btn, tipTxt) {
+        btn.disabled = true; var old = btn.textContent; btn.textContent = '创建中…';
         req('/api/projects', { name: nameIn.value, baseId: ANALYZE.base_id, sheetId: sh.id,
           sheetName: sh.name, url: ANALYZE.url, fieldMap: fm }).then(function(d2) {
-          btnC.disabled = false; btnC.textContent = '创建项目';
+          btn.disabled = false; btn.textContent = old;
           if (d2.error) { alert(d2.error); return; }
           box.close();
           loadList();
-          alert('项目已创建 ✓\n首轮任务将在 30 分钟内自动同步进来（同步期间不打扰任何人）。');
+          alert(tipTxt);
         });
+      }
+      btnC.addEventListener('click', function() {
+        var fm = {};
+        Object.keys(sels).forEach(function(k) { if (sels[k].value) fm[k] = sels[k].value; });
+        if (!fm.title || !fm.user) { alert('「任务名称」和「执行人」两列必须指定 —— 否则任务无法按人归属（若不需要任务归属，请用「原样导入」）'); return; }
+        doCreate(fm, btnC, '项目已创建 ✓\n首轮任务将在 30 分钟内自动同步进来（同步期间不打扰任何人）。');
+      });
+      btnR.addEventListener('click', function() {
+        doCreate({}, btnR, '已按原样导入 ✓\n整表数据与多维表格完全一致（只读镜像），30 分钟内首次同步，不改动原表任何内容。');
       });
       acts.appendChild(btnC);
+      acts.appendChild(btnR);
       mapBox.appendChild(acts);
     }
   }

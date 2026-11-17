@@ -34,6 +34,7 @@ import github as gh
 import match
 import notify
 import projects as projects_mod
+from notable import _cell_text
 import settings
 import sync as syncer
 from dingtalk import Client as DingClient, DingError
@@ -1752,6 +1753,15 @@ def projects_list(s):
     for p in db.projects_all():
         pid = p['project_id']
         is_owner = p.get('owner_person_id') == me
+        # 原样导入项目：整表镜像，不按人归属 → 仅负责人/管理员可见
+        if projects_mod.project_mode(p) == 'raw':
+            if not (is_admin or is_owner):
+                continue
+            out.append({'project_id': pid, 'name': p['name'], 'sheet_name': p.get('sheet_name') or '',
+                        'url': p.get('url') or '', 'status': p.get('status') or 'active',
+                        'owner': is_owner, 'mine_only': False, 'mode': 'raw',
+                        'stats': {'total': 0, 'progress': 0}})
+            continue
         if is_admin or is_owner:
             recs = _project_task_rows(pid)
         else:
@@ -1762,8 +1772,21 @@ def projects_list(s):
         out.append({'project_id': pid, 'name': p['name'], 'sheet_name': p.get('sheet_name') or '',
                     'url': p.get('url') or '', 'status': p.get('status') or 'active',
                     'owner': is_owner, 'mine_only': not (is_admin or is_owner),
-                    'stats': st})
+                    'mode': 'task', 'stats': st})
     return {'projects': out, 'kind': s['kind']}
+
+
+def _raw_cell(v):
+    """原样单元格归一：成员/单选取文本，13 位毫秒戳转日期，超长截断"""
+    import datetime as _dt
+    s = _cell_text(v)
+    try:
+        n = int(str(v).strip()) if str(v).strip().isdigit() else 0
+        if n > 10 ** 12:
+            return _dt.date.fromtimestamp(n / 1000).isoformat()
+    except Exception:
+        pass
+    return s[:120]
 
 
 def project_detail(pid, s):
@@ -1774,6 +1797,27 @@ def project_detail(pid, s):
     me = s.get('person_id') or ''
     is_admin = s['kind'] == 'admin'
     is_owner = p.get('owner_person_id') == me
+    head = {'project_id': pid, 'name': p['name'],
+            'sheet_name': p.get('sheet_name') or '',
+            'url': p.get('url') or '', 'status': p.get('status') or 'active',
+            'owner': is_owner, 'field_map': p.get('field_map') or {},
+            'mode': projects_mod.project_mode(p)}
+    # ── 原样导入项目：整表镜像原样返回 ──
+    if head['mode'] == 'raw':
+        if not (is_admin or is_owner):
+            return {'project': head, 'raw': {'columns': [], 'rows': []}, 'stats': {}, 'tasks': []}
+        recs = db.raw_all(pid)
+        cols = []
+        for r in recs:
+            for k in (r['fields'] or {}).keys():
+                if k not in cols:
+                    cols.append(k)
+        rows = [{'record_id': r['record_id'],
+                 'cells': [_raw_cell((r['fields'] or {}).get(c)) for c in cols]}
+                for r in recs]
+        return {'project': head, 'raw': {'columns': cols, 'rows': rows},
+                'stats': {}, 'tasks': []}
+    # ── 任务项目 ──
     recs = _project_task_rows(pid) if (is_admin or is_owner) else _project_task_rows(pid, person_id=me)
     fields = ('任务名称', '状态', '优先级', '截止时间', '负责人', '处理链接', '来源应用', '更新时间')
     tasks = [{k: r.get(k) for k in fields if r.get(k)} for r in recs]
@@ -1786,11 +1830,7 @@ def project_detail(pid, s):
                 owner_names.add(nm)
     owner_names.add(str((db.person_get(me) or {}).get('name') or ''))
     owner_names.discard('')
-    return {'project': {'project_id': pid, 'name': p['name'],
-                        'sheet_name': p.get('sheet_name') or '',
-                        'url': p.get('url') or '', 'status': p.get('status') or 'active',
-                        'owner': is_owner,
-                        'field_map': p.get('field_map') or {}},
+    return {'project': head,
             'stats': _project_stats(recs), 'tasks': tasks,
             'people': _dingtalk_people(owner_names)}
 

@@ -130,6 +130,14 @@ def _init(c):
       updated_at      TEXT
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_sheet ON projects(base_id, sheet_id);
+    CREATE TABLE IF NOT EXISTS raw_records (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id TEXT NOT NULL,
+      record_id  TEXT NOT NULL,
+      fields     TEXT,
+      updated_at TEXT,
+      UNIQUE(project_id, record_id)
+    );
     CREATE TABLE IF NOT EXISTS judge_log (
       id         TEXT PRIMARY KEY,
       pid        TEXT,
@@ -699,6 +707,38 @@ def project_set(pid, **kw):
                   vals + [pid])
         c.commit()
     return True
+
+
+# ── 原样导入项目：整表镜像（不做字段映射，原样展示） ──────────────────
+def raw_replace(pid, records):
+    """全量替换某项目的原始行镜像。records: [{id/recordId, fields:{列名:值}}]"""
+    c = connect()
+    with _lock:
+        c.execute('DELETE FROM raw_records WHERE project_id=?', (pid,))
+        for r in records:
+            rid = str(r.get('id') or r.get('recordId') or '')
+            if not rid:
+                continue
+            c.execute('INSERT OR REPLACE INTO raw_records(project_id,record_id,fields,updated_at) '
+                      'VALUES(?,?,?,?)',
+                      (pid, rid, json.dumps(r.get('fields') or {}, ensure_ascii=False), now()))
+        c.commit()
+
+
+def raw_all(pid):
+    """某项目的原始行（按入库序）；fields 已解析回 dict"""
+    c = connect()
+    with _lock:
+        rows = c.execute('SELECT record_id, fields FROM raw_records WHERE project_id=? '
+                         'ORDER BY id', (pid,)).fetchall()
+    out = []
+    for rid, f in rows:
+        try:
+            d = json.loads(f or '{}')
+        except Exception:
+            d = {}
+        out.append({'record_id': rid, 'fields': d})
+    return out
 
 
 def project_del(pid):
