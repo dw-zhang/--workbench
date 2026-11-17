@@ -256,10 +256,18 @@ def create_record(tok, bid, sid, fields):
 
 def delete_record(tok, bid, sid, rid):
     """删除一行（撤回误写/清理测试数据）。实测正确端点：
-    POST /sheets/{sid}/records/delete，body {"recordIds": [..]}"""
+    POST /sheets/{sid}/records/delete，body {"recordIds": [..]}
+    注意：接口失败时返回 {"success": false}（HTTP 200），必须校验，否则静默丢删"""
     url = (API % bid + '/sheets/%s/records/delete?operatorId=%s'
            % (urllib.parse.quote(sid), urllib.parse.quote(_operator_id())))
-    _req(url, tok, {'recordIds': [str(rid)]})
+    last = ''
+    for i in range(3):
+        d = _req(url, tok, {'recordIds': [str(rid)]})
+        if d.get('success') is not False:
+            return d
+        last = json.dumps(d, ensure_ascii=False)[:160]
+        time.sleep(1 + i)
+    raise NotableError('删除多维表格记录失败：%s' % last)
 
 
 def sync_notable(cfg, say):

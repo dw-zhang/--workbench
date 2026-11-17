@@ -2759,6 +2759,16 @@ try {
       var box = mask0(d.project.name + ' · 项目详情');
       box.b.style.width = 'min(1100px, 96vw)';
       var b = box.b;
+      var canEdit = !!d.project.can_edit;
+      function delTask(t) {
+        var rid = String(t['钉钉任务ID'] || '').replace(/^aitbl:/, '');
+        if (!rid) { alert('这条任务没有钉钉记录 ID，请直接到多维表格里删除'); return; }
+        if (!confirm('删除任务「' + (t['任务名称'] || '') + '」？\n将同时从钉钉多维表格删除该行数据，不可恢复。')) return;
+        req('/api/projects/task/delete', { projectId: pid, recordId: rid }).then(function(r2) {
+          if (r2.error) { alert(r2.error); return; }
+          box.close(); loadList(); openDetail(pid);
+        });
+      }
       if (d.project.status === 'paused') {
         var warn = el('div', 'pr-steps'); warn.style.cssText = 'background:#fef2f2;border-color:#fecaca;color:#991b1b';
         warn.textContent = '⚠ 该项目的表格结构发生过变化，同步已自动暂停。检查多维表格的列是否被改动后，请联系管理员在数据恢复。';
@@ -2778,7 +2788,7 @@ try {
       /* ── 原样导入项目：整表镜像，只读展示 ── */
       if (d.project.mode === 'raw') {
         var raw = d.raw || { columns: [], rows: [] };
-        b.appendChild(el('div', 'pr-steps', '📄 原样导入：以下数据与钉钉多维表格完全一致（列、行原样镜像，只读），每 30 分钟自动同步。不进任务管理、不按人归属，也不改动原表任何内容。'));
+        b.appendChild(el('div', 'pr-steps', '📄 原样展示：以下数据与钉钉多维表格完全一致（列、行原样镜像，只读），每 30 分钟自动同步，不改动原表任何内容。若下一轮同步能识别出「任务名称 + 执行人」列，本项目会自动升级为任务项目并生成看板/日历/甘特等七种视图。'));
         b.appendChild(el('div', null, raw.rows.length + ' 行 · ' + raw.columns.length + ' 列')).style.cssText = 'font-size:12px;color:#6b7280;margin-top:10px';
         var wrapR = el('div'); wrapR.style.cssText = 'overflow:auto;border:1px solid #e5e7eb;border-radius:10px;margin-top:8px;max-height:52vh';
         var tR = el('table', 'tasks');
@@ -2852,10 +2862,10 @@ try {
         }
         box2.appendChild(el('div', null, '任务明细（' + tasks.length + '）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
         var t2 = el('table', 'tasks'); t2.style.marginTop = '8px';
-        t2.innerHTML = '<thead><tr><th>任务名称</th><th>负责人</th><th>优先级</th><th>完成节点</th><th>状态</th></tr></thead>';
+        t2.innerHTML = '<thead><tr><th>任务名称</th><th>负责人</th><th>优先级</th><th>完成节点</th><th>状态</th>' + (canEdit ? '<th style="width:44px"></th>' : '') + '</tr></thead>';
         var t3 = el('tbody');
         if (!tasks.length) {
-          var tr0 = el('tr'); var td0 = el('td', 'empty', '该项目暂无你名下的任务'); td0.colSpan = 5; tr0.appendChild(td0); t3.appendChild(tr0);
+          var tr0 = el('tr'); var td0 = el('td', 'empty', '该项目暂无你名下的任务'); td0.colSpan = 5 + (canEdit ? 1 : 0); tr0.appendChild(td0); t3.appendChild(tr0);
         } else {
           tasks.forEach(function(t) {
             var tr = el('tr');
@@ -2865,6 +2875,14 @@ try {
             tr.appendChild(el('td', null, t['优先级'] || '—'));
             tr.appendChild(el('td', null, dayOf(t) || '—'));
             var tdS = el('td'); tdS.appendChild(tagOf(t['状态'])); tr.appendChild(tdS);
+            if (canEdit) {
+              var tdX = el('td');
+              var bx = el('button', 'btn-mini', '✕'); bx.type = 'button';
+              bx.title = '删除该任务（写回钉钉多维表格）';
+              bx.style.cssText = 'color:#dc2626;border-color:#fecaca;padding:2px 7px';
+              bx.addEventListener('click', function() { delTask(t); });
+              tdX.appendChild(bx); tr.appendChild(tdX);
+            }
             t3.appendChild(tr);
           });
         }
@@ -2885,11 +2903,21 @@ try {
           if (!list.length) col.appendChild(el('div', null, '—')).style.cssText = 'color:#cbd5e1;font-size:12px;text-align:center;padding:12px 0';
           list.forEach(function(t) {
             var card = el('div', 'pj-kb-card');
+            card.style.position = 'relative';
             var ln = el('b'); ln.appendChild(taskLink(t, 30)); card.appendChild(ln);
             var meta = el('div', null, (t['负责人'] || '未分配') + (dayOf(t) ? ' · ' + dayOf(t).slice(5) : '') + (t['优先级'] ? ' · ' + t['优先级'] : ''));
             meta.style.cssText = 'color:#9ca3af;font-size:11.5px';
             card.appendChild(meta);
             if (dayOf(t) && dayOf(t) < todayS() && s !== '已完成') card.style.borderLeft = '3px solid #dc2626';
+            if (canEdit) {
+              var dx = el('span', null, '✕');
+              dx.title = '删除该任务（写回钉钉多维表格）';
+              dx.style.cssText = 'position:absolute;top:6px;right:8px;color:#e5e7eb;cursor:pointer;font-size:12px;line-height:1';
+              dx.addEventListener('mouseenter', function() { dx.style.color = '#dc2626'; });
+              dx.addEventListener('mouseleave', function() { dx.style.color = '#e5e7eb'; });
+              dx.addEventListener('click', function(ev) { ev.preventDefault(); ev.stopPropagation(); delTask(t); });
+              card.appendChild(dx);
+            }
             col.appendChild(card);
           });
           wrap.appendChild(col);

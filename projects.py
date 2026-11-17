@@ -12,6 +12,7 @@
 - 首轮全量静默（config 键 project:imported:<pid>），之后增量新任务才通知
 """
 import json
+import re
 import urllib.parse
 
 import db
@@ -21,7 +22,7 @@ from notable import (NotableError, _base_ids, _cell_date, _cell_members, _cell_t
                      _iter_records, _list_sheets, _operator_id, _person_map, _pick,
                      _req, _token, API, PRIORITY_MAP, STATUS_MAP,
                      DUE_NAMES, PRIORITY_NAMES, STATUS_NAMES, TITLE_NAMES, USER_HINTS,
-                     create_record)
+                     create_record, delete_record)
 
 # 字段映射的角色键（field_map 的合法键）
 ROLES = ('title', 'status', 'priority', 'due', 'user')
@@ -124,6 +125,62 @@ def _guess_roles(names, recs):
     return roles
 
 
+def _member_text(v, linkmap):
+    """人员/关联字段值 → 姓名文本（关联记录经 linkmap 解析成姓名，文本原样）"""
+    if isinstance(v, dict) and 'linkedRecordIds' in v:
+        ids = v.get('linkedRecordIds') or []
+        return '、'.join(x for x in ((linkmap or {}).get(str(i)) for i in ids) if x)
+    return _cell_text(v)
+
+
+def _name_map():
+    """钉钉账号姓名 → person_id（姓名降级归属用）；persons 表真名优先，跳过脱敏名"""
+    out = {}
+    c = db.connect()
+    with db._lock:
+        rows = c.execute("SELECT a.person_id, p.name, a.name FROM accounts a "
+                         "LEFT JOIN persons p ON p.person_id = a.person_id "
+                         "WHERE a.platform='dingtalk'").fetchall()
+    for pid, pname, aname in rows:
+        nm = (pname or aname or '').strip()
+        if nm and '*' not in nm:
+            out.setdefault(nm, pid)
+    return out
+
+
+def _auto_field_map(names, recs):
+    """自动推断任务字段映射：精确列名 → 子串包含兜底（按提示词优先级遍历）。
+    仅当能同时确定「任务名称 + 执行人」且执行人列可解析（钉钉成员 / 关联记录 / 文本姓名）时返回映射，
+    否则返回 None（保持原样模式）"""
+    roles = _guess_roles(set(names), recs)
+    fm = {k: roles[k]['field'] for k in ROLES if roles.get(k)}
+
+    def fuzzy(hints):
+        for h in hints:            # 提示词优先级优先（'名称' 比 '任务' 更具体靠前）
+            for n in sorted(names):
+                if h in n:
+                    return n
+        return ''
+
+    if not fm.get('title'):
+        t = fuzzy(TITLE_NAMES)
+        if t:
+            fm['title'] = t
+    if not fm.get('user'):
+        u = fuzzy(USER_HINTS)
+        if u:
+            fm['user'] = u
+    if not (fm.get('title') and fm.get('user')):
+        return None
+    # 执行人列可解析即可：真实成员 / 关联记录（经姓名匹配）/ 文本姓名
+    ok = 0
+    for r in recs[:200]:
+        v = (r.get('fields') or {}).get(fm['user'])
+        if _cell_members(v) or (isinstance(v, dict) and 'linkedRecordIds' in v) or _cell_text(v):
+            ok += 1
+    return fm if ok else None
+
+
 def analyze_link(link):
     """解析链接 → 枚举数据表 → 每张表拉样本推断字段结构（只读）"""
     bids = _base_ids(link)
@@ -208,11 +265,29 @@ def add_task(p, title, users, status='', priority='', due=''):
         raise NotableError('项目字段映射不完整，无法写入')
     tok = _token()
     fields = {fm['title']: title[:120]}
-    members = [{'unionId': uid} for _, uid in users if uid]
-    if members:
-        fields[fm['user']] = members
-    elif users:
-        fields[fm['user']] = '、'.join(nm for nm, _ in users if nm)
+    # 执行人列类型探测：取 1 行现有记录看值形态
+    #   钉钉成员字段 → 写 [{'unionId':..}]；关联记录字段 → 写 {'linkedRecordIds':[..]}
+    try:
+        _, probe = _iter_records(tok, p['base_id'], p['sheet_id'])
+        pv = (probe[0].get('fields') or {}).get(fm['user']) if probe else None
+    except NotableError:
+        pv = None
+    if isinstance(pv, dict) and 'linkedRecordIds' in pv:
+        lm = _link_map(tok, p['base_id'])
+        r2n = {}
+        for rid2, nm in lm.items():
+            r2n.setdefault(nm, rid2)
+        ids = [r2n[nm] for nm, _ in users if nm in r2n]
+        if ids:
+            fields[fm['user']] = {'linkedRecordIds': ids}
+        else:
+            fields[fm['user']] = '、'.join(nm for nm, _ in users if nm)
+    else:
+        members = [{'unionId': uid} for _, uid in users if uid]
+        if members:
+            fields[fm['user']] = members
+        elif users:
+            fields[fm['user']] = '、'.join(nm for nm, _ in users if nm)
     if fm.get('status') and status:
         fields[fm['status']] = str(status)
     if fm.get('priority') and priority:
@@ -222,6 +297,28 @@ def add_task(p, title, users, status='', priority='', due=''):
         fields[fm['due']] = int(_dt.datetime(int(y), int(m), int(d), 12, 0).timestamp() * 1000)
     rid = create_record(tok, p['base_id'], p['sheet_id'], fields)
     return rid, fields
+
+
+def delete_task(p, record_id):
+    """从多维表格删一行任务，并同步清理工作台本地镜像。
+    record_id 是钉钉多维表格里的记录 ID（本地任务的「钉钉任务ID」= aitbl:<rid>）。
+    返回本地清理的行数；钉钉侧失败抛 NotableError（本地不动）"""
+    fm = p.get('field_map') or {}
+    if not fm.get('title') or not fm.get('user'):
+        raise NotableError('项目字段映射不完整，无法删除')
+    tok = _token()
+    delete_record(tok, p['base_id'], p['sheet_id'], record_id)
+    key = 'aitbl:%s' % record_id
+    c = db.connect()
+    n = 0
+    with db._lock:
+        rows = c.execute("SELECT id FROM records WHERE database='task' AND data LIKE ?",
+                         ('%' + key + '%',)).fetchall()
+        for r in rows:
+            c.execute('DELETE FROM records WHERE id=?', (r['id'],))
+            n += 1
+        c.commit()
+    return n
 
 
 # ── 按项目同步 ────────────────────────────────────────────────────────
@@ -242,6 +339,7 @@ def sync_projects(cfg, say):
     notify_open = str(pc.get('notify_open') or '1') != '0'
     tok = _token()
     u2p, i2n = _person_map()
+    n2p = _name_map()
     admin_pid = _admin_pid()
     stat = {'new': 0, 'upd': 0, 'skip': 0, 'unmatched': 0, 'paused': 0, 'err': []}
 
@@ -254,19 +352,32 @@ def sync_projects(cfg, say):
         except NotableError as e:
             stat['err'].append('项目 %s：%s' % (pname, e))
             continue
-        # ── 原样导入项目：不做字段映射，整表镜像，不进任务管理 ──
+        # ── 原样导入项目：先尝试自动识别任务字段，识别成功则升级为任务项目 ──
         if not fm.get('title') or not fm.get('user'):
-            # 关联记录字段解析表：整库记录 ID → 主键文本（渲染时把 linkedRecordIds 变成可读名称）
-            try:
-                lm = _link_map(tok, p['base_id'])
-                db.cfg_set({'raw:linkmap:%s' % pid: json.dumps(lm, ensure_ascii=False)})
-            except Exception:
-                pass
-            db.raw_replace(pid, recs)
-            say('项目 %s（原样导入）：镜像 %d 行' % (pname, len(recs)))
-            if first:
-                db.cfg_set({'project:imported:%s' % pid: db.now()})
-            continue
+            names = set()
+            for r in recs:
+                names.update((r.get('fields') or {}).keys())
+            auto = _auto_field_map(names, recs)
+            if auto:
+                # 自动升级：写入识别结果，走任务同步路径 → 前端自动获得七视图 + 新增/删除任务
+                fm = auto
+                db.project_set(pid, field_map=json.dumps(fm, ensure_ascii=False))
+                p = db.project_get(pid)
+                pname = p['name']
+                say('项目 %s：自动识别出任务字段（%s / %s），已生成看板/日历/甘特等视图'
+                    % (pname, fm['title'], fm['user']))
+            else:
+                # 关联记录字段解析表：整库记录 ID → 主键文本（渲染时把 linkedRecordIds 变成可读名称）
+                try:
+                    lm = _link_map(tok, p['base_id'])
+                    db.cfg_set({'raw:linkmap:%s' % pid: json.dumps(lm, ensure_ascii=False)})
+                except Exception:
+                    pass
+                db.raw_replace(pid, recs)
+                say('项目 %s（原样导入）：镜像 %d 行' % (pname, len(recs)))
+                if first:
+                    db.cfg_set({'project:imported:%s' % pid: db.now()})
+                continue
         if not recs:
             say('项目 %s：数据表为空' % pname)
             continue
@@ -289,11 +400,24 @@ def sync_projects(cfg, say):
         f_title, f_status = fm['title'], fm.get('status', '')
         f_pri, f_due, f_user = fm.get('priority', ''), fm.get('due', ''), fm['user']
         new = upd = skip = 0
+        linkmap = None          # 关联记录解析表，遇到关联人员列时按需构建
         for r in recs:
             f = r.get('fields') or {}
             rid = str(r.get('id') or r.get('recordId') or '')
+            # 执行人解析两级降级：① 钉钉成员字段（unionId 直连）② 关联记录/文本姓名（按姓名匹配）
             members = _cell_members(f.get(f_user))
-            if not members:
+            pairs = [(u2p[uid], nm) for uid, nm in members if u2p.get(uid)]
+            if not pairs:
+                if linkmap is None:
+                    linkmap = _link_map(tok, p['base_id'])
+                txt = _member_text(f.get(f_user), linkmap)
+                for nm in [x.strip() for x in re.split('[、,，;；/]', txt) if x.strip()]:
+                    p2 = n2p.get(nm)
+                    if p2:
+                        pairs.append((p2, nm))
+            if not pairs:
+                if members or _member_text(f.get(f_user), linkmap):
+                    stat['unmatched'] += 1   # 有人但匹配不到工作台人员
                 skip += 1
                 continue
             title = ' '.join(_cell_text(f.get(f_title)).split())[:120]
@@ -304,7 +428,7 @@ def sync_projects(cfg, say):
                                     _cell_text(f.get(f_status)) or '待处理') if f_status else '待处理'
             pri = PRIORITY_MAP.get(_cell_text(f.get(f_pri)), '中') if f_pri else '中'
             due = _cell_date(f.get(f_due)) if f_due else ''
-            owners = [nm for _, nm in members if nm]
+            owners = [nm for _, nm in pairs]
             props = {
                 '任务名称': title, '优先级': pri, '状态': status,
                 '截止时间': due, '负责人': '、'.join(owners)[:40],
@@ -312,11 +436,7 @@ def sync_projects(cfg, say):
                 '处理链接': p.get('url') or '', '来源应用': '钉钉多维表格',
                 '钉钉任务ID': 'aitbl:%s' % rid,
             }
-            for uid, nm in members:
-                p2 = u2p.get(uid)
-                if not p2:
-                    stat['unmatched'] += 1
-                    continue
+            for p2, nm in pairs:
                 exist = db.find_record(db.TABLES['task'], '钉钉任务ID', props['钉钉任务ID'], p2)
                 if exist:
                     db.update_record(db.TABLES['task'], exist, props, person_id=p2)

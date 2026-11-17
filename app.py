@@ -1427,6 +1427,21 @@ class Handler(BaseHTTPRequestHandler):
                                       person_id=p0['owner_person_id'])
                 db.log('config', True, 0, '项目「%s」新增任务：%s' % (p0['name'], props['任务名称'][:30]))
                 return self._send(200, {'ok': True, 'record_id': rid})
+            if p == '/api/projects/task/delete':
+                p0 = db.project_get(body.get('projectId') or '')
+                if not p0:
+                    return self._send(404, {'error': '项目不存在'})
+                if s['kind'] != 'admin' and p0.get('owner_person_id') != (s.get('person_id') or ''):
+                    return self._send(403, {'error': '只有管理员或项目负责人可以删除任务'})
+                rid = str(body.get('recordId') or '').strip()
+                if not rid:
+                    return self._send(400, {'error': '缺少 recordId'})
+                try:
+                    n = projects_mod.delete_task(p0, rid)
+                except projects_mod.NotableError as e:
+                    return self._send(400, {'error': str(e)})
+                db.log('config', True, 0, '项目「%s」删除任务 %s（本地清理 %d 行）' % (p0['name'], rid, n))
+                return self._send(200, {'ok': True, 'local_removed': n})
             if p == '/api/projects/resume':
                 p0 = db.project_get(body.get('projectId') or '')
                 if not p0:
@@ -1815,7 +1830,8 @@ def project_detail(pid, s):
     head = {'project_id': pid, 'name': p['name'],
             'sheet_name': p.get('sheet_name') or '',
             'url': p.get('url') or '', 'status': p.get('status') or 'active',
-            'owner': is_owner, 'field_map': p.get('field_map') or {},
+            'owner': is_owner, 'can_edit': bool(is_owner or is_admin),
+            'field_map': p.get('field_map') or {},
             'mode': projects_mod.project_mode(p)}
     # ── 原样导入项目：整表镜像原样返回 ──
     if head['mode'] == 'raw':
@@ -1838,7 +1854,7 @@ def project_detail(pid, s):
                 'stats': {}, 'tasks': []}
     # ── 任务项目 ──
     recs = _project_task_rows(pid) if (is_admin or is_owner) else _project_task_rows(pid, person_id=me)
-    fields = ('任务名称', '状态', '优先级', '截止时间', '负责人', '处理链接', '来源应用', '更新时间')
+    fields = ('任务名称', '状态', '优先级', '截止时间', '负责人', '处理链接', '来源应用', '更新时间', '钉钉任务ID')
     tasks = [{k: r.get(k) for k in fields if r.get(k)} for r in recs]
     # 执行人候选：项目里出现过的负责人，去重后给出可@的钉钉身份
     owner_names = set()
