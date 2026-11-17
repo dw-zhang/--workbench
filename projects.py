@@ -248,6 +248,127 @@ def analyze_link(link):
 
 
 # ── 项目 CRUD（供 API 调用） ──────────────────────────────────────────
+LOCAL_PREFIX = 'local:'
+
+
+def is_local(p):
+    """本地项目：工作台手工创建、还没绑定钉钉多维表格"""
+    return str((p or {}).get('base_id') or '').startswith(LOCAL_PREFIX)
+
+
+def _local_map():
+    return {'title': '任务名称', 'user': '负责人', 'status': '状态',
+            'priority': '优先级', 'due': '截止时间'}
+
+
+def create_local(name, owner_person_id=''):
+    """在工作台手工建项目：先本地跑起来，之后可绑定钉钉多维表格做双向同步"""
+    name = str(name or '').strip()[:60]
+    if not name:
+        raise NotableError('项目名称不能为空')
+    return db.project_add(name, '', '', sheet_name='工作台任务', url='',
+                          field_map=_local_map(), owner_person_id=owner_person_id)
+
+
+def _owner_rows(p, owners):
+    """执行人姓名 → [(姓名, person_id)]；匹配不到人的先记为 ('', '')"""
+    n2p = _name_map()
+    out = []
+    for nm in owners:
+        out.append((nm, n2p.get(nm) or ''))
+    return out
+
+
+def add_local_task(p, title, owners, status='', priority='', due=''):
+    """本地项目新增任务：直接落工作台任务表（钉钉侧无写入）
+    返回落库的记录 ID 列表（一个执行人一条，与多维表同步口径一致）"""
+    title = ' '.join(str(title or '').split())[:120]
+    if not title:
+        raise NotableError('任务名称不能为空')
+    owners = [str(x).strip() for x in (owners or []) if str(x).strip()]
+    pairs = _owner_rows(p, owners)
+    due = str(due or '')[:10]
+    props = {
+        '任务名称': title, '状态': status or '待处理', '优先级': priority or '中',
+        '截止时间': due, '负责人': '、'.join(owners) or '未分配',
+        '所属项目ID': p['project_id'], '所属项目': p['name'][:40],
+        '来源应用': '工作台', '处理链接': p.get('url') or '',
+    }
+    ids = []
+    for nm, pid in pairs:
+        if pid:
+            ids.append(db.add_record(db.TABLES['task'], props, source='local', person_id=pid))
+    if not ids and p.get('owner_person_id'):
+        # 执行人没匹配上工作台人员时，落在项目负责人名下，保证任务不丢
+        ids.append(db.add_record(db.TABLES['task'], props, source='local',
+                                 person_id=p['owner_person_id']))
+    return ids
+
+
+def del_local_task(p, record_id):
+    """删本地任务行；只允许删本项目名下的记录"""
+    record_id = str(record_id or '').strip()
+    if not record_id:
+        raise NotableError('缺少任务记录 ID')
+    c = db.connect()
+    with db._lock:
+        row = c.execute("SELECT id, data FROM records WHERE id=? AND database='task'",
+                        (record_id,)).fetchone()
+        if not row:
+            raise NotableError('任务不存在或已删除')
+        try:
+            d = json.loads(row['data'] or '{}')
+        except Exception:
+            d = {}
+        if str(d.get('所属项目ID') or '') != p['project_id']:
+            raise NotableError('该任务不属于此项目')
+        c.execute('DELETE FROM records WHERE id=?', (record_id,))
+        c.commit()
+    return 1
+
+
+def bind_sheet(p, base_id, sheet_id, sheet_name='', url='', field_map=None):
+    """把本地项目绑定到一张钉钉多维表格；之后新增任务会同时写钉钉。"""
+    base_id, sheet_id = str(base_id or '').strip(), str(sheet_id or '').strip()
+    if not base_id or not sheet_id:
+        raise NotableError('缺少 baseId 或 sheetId')
+    other = db.project_by_sheet(base_id, sheet_id)
+    if other and other['project_id'] != p['project_id']:
+        raise NotableError('这张数据表已绑定项目「%s」' % other['name'])
+    fm = {k: str((field_map or {}).get(k) or '').strip() for k in ROLES}
+    # 空映射 = 原样接管（只读展示），不硬套本地列名
+    db.project_set(p['project_id'], base_id=base_id, sheet_id=sheet_id,
+                   sheet_name=sheet_name or '', url=url or '',
+                   field_map=json.dumps(fm, ensure_ascii=False))
+    return db.project_get(p['project_id'])
+
+
+def push_local_tasks(p, recs):
+    """把本地任务批量写进已绑定的钉钉表（每条写成功后回填钉钉任务ID，避免重复推送）"""
+    u2p, _ = _person_map()
+    p2u = {}
+    for uid, pid in u2p.items():
+        p2u.setdefault(pid, uid)
+    n2p = _name_map()
+    ok, errs = 0, []
+    for r in recs:
+        title = ' '.join(str(r.get('任务名称') or '').split())[:120]
+        if not title:
+            continue
+        names = [x.strip() for x in str(r.get('负责人') or '').split('、') if x.strip()]
+        users = [(nm, p2u.get(n2p.get(nm) or '', '')) for nm in names]
+        try:
+            rid, _ = add_task(p, title, users, r.get('状态') or '', r.get('优先级') or '',
+                              str(r.get('截止时间') or '')[:10])
+        except Exception as e:
+            errs.append('%s：%s' % (title[:16], str(e)[:70]))
+            continue
+        db.update_record(db.TABLES['task'], r.get('record_id') or r.get('_id') or '',
+                         {'钉钉任务ID': 'aitbl:%s' % rid, '来源应用': '钉钉多维表格'})
+        ok += 1
+    return ok, errs
+
+
 def create_project(name, base_id, sheet_id, sheet_name='', url='', field_map=None,
                    owner_person_id='', mode='auto'):
     """建项目档案。
@@ -279,7 +400,9 @@ def create_project(name, base_id, sheet_id, sheet_name='', url='', field_map=Non
 
 
 def project_mode(p):
-    """task=任务项目（按人归属） / raw=原样导入（整表镜像）"""
+    """local=工作台自建（暂未绑钉钉） / task=任务项目（按人归属） / raw=原样导入（整表镜像）"""
+    if is_local(p):
+        return 'local'
     fm = p.get('field_map') or {}
     return 'task' if (fm.get('title') and fm.get('user')) else 'raw'
 
@@ -389,6 +512,8 @@ def sync_projects(cfg, say):
 
     for p in prjs:
         pid, pname = p['project_id'], p['name']
+        if is_local(p):
+            continue          # 工作台自建项目：本地为主存储，没有钉钉表可同步
         fm = p.get('field_map') or {}
         first = not settings.g('project:imported:%s' % pid)
         try:

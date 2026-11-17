@@ -826,7 +826,23 @@
         <h1 class="page-title">项目管理</h1>
         <div style="color:#6b7280; font-size:13px; margin-top:4px">一个钉钉多维表格链接 = 一个项目 · 数据每 30 分钟自动同步 · 任务同时出现在任务管理里</div>
       </div>
-      <button class="btn-mini primary" id="pr-import-btn" style="margin-left:auto; padding:8px 16px; font-size:13px">＋ 导入项目</button>
+      <button class="btn-mini" id="pr-new-btn" style="margin-left:auto; padding:8px 16px; font-size:13px">＋ 新建项目</button>
+      <button class="btn-mini primary" id="pr-import-btn" style="padding:8px 16px; font-size:13px">＋ 导入项目</button>
+    </div>
+    <div id="pr-remind" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 14px; margin-bottom:14px; font-size:13px; color:#374151">
+      <span style="font-weight:600">🔔 未完成任务每日提醒</span>
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer">
+        <input type="checkbox" id="pr-remind-on"> 开启
+      </label>
+      <label style="display:flex; align-items:center; gap:6px">
+        每天 <input type="time" id="pr-remind-time" value="09:00" style="border:1px solid #e5e7eb; border-radius:8px; padding:4px 8px; font-size:13px">
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer">
+        <input type="checkbox" id="pr-remind-overdue"> 只提醒已逾期
+      </label>
+      <button class="btn-mini" id="pr-remind-run">立即发一次</button>
+      <button class="btn-mini" id="pr-remind-save" style="color:#2563eb;border-color:#bfdbfe">保存设置</button>
+      <span id="pr-remind-stat" style="color:#9ca3af; font-size:12px"></span>
     </div>
     <div class="pr-grid" id="pr-cards">
       <div class="empty" style="padding:32px; text-align:center; color:#9ca3af">数据加载中…</div>
@@ -2703,7 +2719,8 @@ try {
       if (p.status === 'paused') head.appendChild(el('span', 'pr-tag', '已暂停')).style.cssText = 'background:#fee2e2;color:#dc2626';
       if (p.owner) head.appendChild(el('span', 'pr-tag', '我负责')).style.cssText = 'background:#dbeafe;color:#2563eb';
       card.appendChild(head);
-      card.appendChild(el('div', 'pr-meta', (p.mode === 'raw' ? '📄 原样导入 · ' : '') + (p.sheet_name || '多维表格') + ' · ' + (p.mine_only ? '我的名下任务' : '全项目任务')));
+      var modeTxt = p.mode === 'raw' ? '📄 原样导入 · ' : (p.mode === 'local' ? '💻 工作台自建 · ' : '');
+      card.appendChild(el('div', 'pr-meta', modeTxt + (p.sheet_name || '多维表格') + ' · ' + (p.mine_only ? '我的名下任务' : '全项目任务')));
       var bar = el('div', 'pr-bar'); var fill = el('i'); fill.style.width = (st.progress || 0) + '%'; bar.appendChild(fill);
       card.appendChild(bar);
       var nums = el('div', 'pr-nums');
@@ -2760,10 +2777,17 @@ try {
       box.b.style.width = 'min(1100px, 96vw)';
       var b = box.b;
       var canEdit = !!d.project.can_edit;
+      var isLocal = d.project.mode === 'local';
       function delTask(t) {
-        var rid = String(t['钉钉任务ID'] || '').replace(/^aitbl:/, '');
-        if (!rid) { alert('这条任务没有钉钉记录 ID，请直接到多维表格里删除'); return; }
-        if (!confirm('删除任务「' + (t['任务名称'] || '') + '」？\n将同时从钉钉多维表格删除该行数据，不可恢复。')) return;
+        var rid = isLocal ? String(t.record_id || '')
+                          : String(t['钉钉任务ID'] || '').replace(/^aitbl:/, '');
+        if (!rid) {
+          alert(isLocal ? '这条任务没有本地记录 ID，请刷新后重试'
+                        : '这条任务没有钉钉记录 ID，请直接到多维表格里删除');
+          return;
+        }
+        if (!confirm('删除任务「' + (t['任务名称'] || '') + '」？\n' +
+            (isLocal ? '该任务会从工作台删除，不可恢复。' : '将同时从钉钉多维表格删除该行数据，不可恢复。'))) return;
         req('/api/projects/task/delete', { projectId: pid, recordId: rid }).then(function(r2) {
           if (r2.error) { alert(r2.error); return; }
           box.close(); loadList(); openDetail(pid);
@@ -2784,6 +2808,9 @@ try {
         nums.appendChild(s);
       });
       b.appendChild(nums);
+      if (isLocal) {
+        b.appendChild(el('div', 'pr-steps', '💻 工作台自建项目：任务只存工作台，新增/删除即时生效，不依赖钉钉。要同步到钉钉，点底部「🔗 绑定钉钉多维表」挂一张现成的表（可一键把本地任务推过去）；或者「⬇ 导出 Excel(CSV)」拿到文件后在钉钉多维表里用「导入」建表。'));
+      }
 
       /* ── 原样导入项目：整表镜像，只读展示 ── */
       if (d.project.mode === 'raw') {
@@ -3166,6 +3193,16 @@ try {
         });
         acts.appendChild(bAdd);
       }
+      if (isLocal) {
+        var bBind = el('button', 'btn-mini', '🔗 绑定钉钉多维表');
+        bBind.addEventListener('click', function() { openBind(d, function() { box.close(); loadList(); openDetail(pid); }); });
+        acts.appendChild(bBind);
+        var bExp = el('button', 'btn-mini', '⬇ 导出 Excel（CSV）');
+        bExp.addEventListener('click', function() {
+          window.open('/api/projects/export?id=' + encodeURIComponent(pid), '_blank');
+        });
+        acts.appendChild(bExp);
+      }
       if (d.project.url) {
         var bOpen = el('button', 'btn-mini primary', '打开钉钉多维表格');
         bOpen.addEventListener('click', function() { window.open(d.project.url, '_blank'); });
@@ -3181,7 +3218,10 @@ try {
     var box = mask0('新增任务 · ' + d.project.name);
     box.b.style.width = 'min(540px, 94vw)';
     var b = box.b;
-    b.appendChild(el('div', 'pr-steps', '任务会直接写入钉钉多维表格：只在你选的数据表末尾追加一行数据，不加列、不改结构、不建视图；执行人会在钉钉里收到 @。写完立即出现在工作台任务管理里，无需等同步。'));
+    var isLocal = d.project.mode === 'local';
+    b.appendChild(el('div', 'pr-steps', isLocal
+      ? '任务只写进工作台（本地），不碰钉钉。执行人按姓名归属到工作台人员；之后若绑定钉钉表，新增任务会同时写入钉钉。'
+      : '任务会直接写入钉钉多维表格：只在你选的数据表末尾追加一行数据，不加列、不改结构、不建视图；执行人会在钉钉里收到 @。写完立即出现在工作台任务管理里，无需等同步。'));
     var users = d.people || [];
     var picked = {};
     var fTitle = el('input'); fTitle.type = 'text'; fTitle.placeholder = '要做什么？一句话说清';
@@ -3198,14 +3238,27 @@ try {
       r.appendChild(node);
       b.appendChild(r);
     }
-    var chipRow = el('div'); chipRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+    var chipRow = el('div'); chipRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;max-height:130px;overflow:auto;padding:2px';
+    var fSearch = el('input'); fSearch.type = 'text'; fSearch.placeholder = '搜姓名筛选（空 = 显示全部）';
+    fSearch.style.cssText = 'border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;font-size:12.5px;width:100%;box-sizing:border-box;margin-bottom:8px';
+    fSearch.addEventListener('input', function() { drawChips(); });
     function drawChips() {
       chipRow.innerHTML = '';
       if (!users.length) {
-        chipRow.appendChild(el('span', 'pr-conf', '项目里还没有可@的成员 —— 先在多维表格里给任务指派过执行人，或联系管理员同步通讯录。'));
+        chipRow.appendChild(el('span', 'pr-conf', isLocal
+          ? '通讯录里没有可选的成员，请先在设置里同步钉钉通讯录。'
+          : '项目里还没有可@的成员 —— 先在多维表格里给任务指派过执行人，或联系管理员同步通讯录。'));
         return;
       }
-      users.forEach(function(u) {
+      var kw = (fSearch.value || '').trim();
+      var list = users.filter(function(u) {
+        return picked[u.name] || !kw || String(u.name || '').indexOf(kw) >= 0;
+      });
+      if (!list.length) {
+        chipRow.appendChild(el('span', 'pr-conf', '没有匹配「' + kw + '」的成员'));
+        return;
+      }
+      list.slice(0, 80).forEach(function(u) {
         var c = el('button', 'btn-mini', (picked[u.name] ? '✓ ' : '＋ ') + u.name);
         c.type = 'button';
         if (picked[u.name]) c.style.cssText = 'background:#eff6ff;color:#2563eb;border-color:#93c5fd;font-weight:600';
@@ -3215,17 +3268,23 @@ try {
         });
         chipRow.appendChild(c);
       });
+      if (list.length > 80) chipRow.appendChild(el('span', 'pr-conf', '还有 ' + (list.length - 80) + ' 人，请用搜索'));
     }
     drawChips();
     frow('任务名称', fTitle);
-    var uwrap = el('div'); uwrap.appendChild(chipRow);
-    uwrap.appendChild(el('div', 'pr-conf', '选中的执行人会写进多维表格的成员列（钉钉里能看到是谁派的任务）')).style.marginTop = '6px';
+    var uwrap = el('div');
+    uwrap.appendChild(fSearch);
+    uwrap.appendChild(chipRow);
+    uwrap.appendChild(el('div', 'pr-conf', isLocal
+      ? '执行人按姓名归属到工作台人员（选了谁，任务就出现在谁的名下）'
+      : '选中的执行人会写进多维表格的成员列（钉钉里能看到是谁派的任务）')).style.marginTop = '6px';
     frow('执行人', uwrap);
     frow('状态', selSt);
     frow('优先级', selPri);
     frow('截止日期', fDue);
     var acts = el('div', 'wb-actions');
-    var btn = el('button', 'btn-mini primary', '写入多维表格');
+    var btnLabel = isLocal ? '写入工作台' : '写入多维表格';
+    var btn = el('button', 'btn-mini primary', btnLabel);
     btn.style.padding = '9px 18px';
     btn.addEventListener('click', function() {
       var title = fTitle.value.trim();
@@ -3236,7 +3295,7 @@ try {
         users: Object.keys(picked), status: selSt.value,
         priority: selPri.value, due: fDue.value
       }).then(function(r2) {
-        btn.disabled = false; btn.textContent = '写入多维表格';
+        btn.disabled = false; btn.textContent = btnLabel;
         if (r2.error) { alert('写入失败：' + r2.error); return; }
         box.close();
         if (onDone) onDone();
@@ -3368,10 +3427,149 @@ try {
     return Object.keys(s0).slice(0, 5).map(function(k) { return k + '=' + s0[k]; }).join(' · ') || '—';
   }
 
+  /* ── 新建项目：工作台自建（不依赖钉钉） ── */
+  function openNewProject() {
+    var box = mask0('新建项目（工作台自建）');
+    box.b.style.width = 'min(540px, 94vw)';
+    var b = box.b;
+    b.appendChild(el('div', 'pr-steps', '不用先在钉钉建表：项目直接建在工作台，可立刻新增任务，看板/日历/甘特/画册/表单/透视表/地图七种视图马上可用。\n\n想同步到钉钉有两条路：进项目详情点「🔗 绑定钉钉多维表」把现成的表挂上（可一键把本地任务推过去）；或点「⬇ 导出 Excel(CSV)」拿文件去钉钉多维表里导入建表。'));
+    var fName = el('input'); fName.type = 'text'; fName.placeholder = '项目名称，例如：Q4 官网改版';
+    fName.style.cssText = 'border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box;margin-top:14px';
+    b.appendChild(fName);
+    var acts = el('div', 'wb-actions');
+    var ok = el('button', 'btn-mini primary', '创建项目'); ok.style.padding = '9px 18px';
+    ok.addEventListener('click', function() {
+      var nm = fName.value.trim();
+      if (!nm) { alert('请填写项目名称'); return; }
+      ok.disabled = true; ok.textContent = '创建中…';
+      req('/api/projects/local', { name: nm }).then(function(d) {
+        ok.disabled = false; ok.textContent = '创建项目';
+        if (d.error) { alert(d.error); return; }
+        box.close(); loadList(); openDetail(d.project_id);
+      });
+    });
+    fName.addEventListener('keydown', function(e) { if (e.key === 'Enter') ok.click(); });
+    acts.appendChild(ok);
+    acts.appendChild(el('button', 'btn-mini', '取消')).addEventListener('click', function() { box.close(); });
+    b.appendChild(acts);
+    setTimeout(function() { fName.focus(); }, 60);
+  }
+
+  /* ── 本地项目绑定钉钉多维表 ── */
+  function openBind(d, onDone) {
+    var box = mask0('绑定钉钉多维表 · ' + d.project.name);
+    box.b.style.width = 'min(580px, 94vw)';
+    var b = box.b;
+    b.appendChild(el('div', 'pr-steps', '贴一张现成的钉钉多维表格链接 → 自动识别任务列 → 绑定后：工作台新增任务会同时写进钉钉，钉钉侧改动每 30 分钟同步回来。\n\n🔒 识别过程只读，不改原表结构；只有「推送本地任务」会在表末尾追加行。'));
+    var inp = el('input'); inp.type = 'text'; inp.placeholder = 'https://alidocs.dingtalk.com/i/nodes/…';
+    inp.style.cssText = 'flex:1; border:1px solid #e5e7eb; border-radius:8px; padding:9px 12px; font-size:13px';
+    var row = el('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:14px';
+    var btnAn = el('button', 'btn-mini', '① 分析链接'); btnAn.style.padding = '9px 14px';
+    row.appendChild(inp); row.appendChild(btnAn);
+    b.appendChild(row);
+    var out = el('div'); b.appendChild(out);
+    var actBox = el('div', 'wb-actions'); b.appendChild(actBox);
+    var pickedSheet = null;
+    btnAn.addEventListener('click', function() {
+      var link = inp.value.trim();
+      if (!link) { alert('请先贴多维表格链接'); return; }
+      btnAn.disabled = true; btnAn.textContent = '分析中…';
+      req('/api/projects/import', { link: link }).then(function(a) {
+        btnAn.disabled = false; btnAn.textContent = '① 分析链接';
+        if (a.error) { alert(a.error); return; }
+        out.innerHTML = ''; actBox.innerHTML = '';
+        out.appendChild(el('div', null, '② 选一张要绑定的数据表')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:14px';
+        (a.sheets || []).forEach(function(sh) {
+          if (!sh.id) return;
+          var card = el('div', 'pr-sheet');
+          var ro = sh.roles || {};
+          var hit = ['title', 'user'].filter(function(k) { return ro[k]; }).length === 2;
+          card.innerHTML = '<b>' + esc(sh.name || String(sh.id).slice(0, 8)) + '</b> <span class="pr-conf">' +
+            (sh.rows || 0) + ' 行 · 字段 ' + ((sh.fields || []).length) + ' 个' +
+            (hit ? ' · ✓ 可识别任务列' : ' · 缺任务/执行人列') + '</span>';
+          card.addEventListener('click', function() {
+            Array.prototype.forEach.call(out.querySelectorAll('.pr-sheet'), function(x) { x.classList.remove('on'); });
+            card.classList.add('on'); pickedSheet = sh; drawActions();
+          });
+          out.appendChild(card);
+        });
+      });
+    });
+    function drawActions() {
+      actBox.innerHTML = '';
+      var ok = el('button', 'btn-mini primary', '绑定此表'); ok.style.padding = '9px 18px';
+      ok.addEventListener('click', function() {
+        var n = (d.tasks || []).length;
+        var push = n ? confirm('是否把工作台已有的 ' + n + ' 条任务写进这张钉钉表？\n\n确定 = 追加写入（表末尾新增 ' + n + ' 行）\n取消 = 只绑定，不推历史任务') : false;
+        ok.disabled = true; ok.textContent = '绑定中…';
+        req('/api/projects/bind', {
+          projectId: d.project.project_id, link: inp.value.trim(),
+          sheetId: pickedSheet.id, push: push
+        }).then(function(r) {
+          ok.disabled = false; ok.textContent = '绑定此表';
+          if (r.error) { alert(r.error); return; }
+          alert('已绑定 ✓\n模式：' + (r.mode === 'task' ? '任务双向同步' : '原样接管（只读展示）') +
+            (push ? '\n已推送 ' + r.pushed + ' 条任务到钉钉' : '') +
+            (r.errors && r.errors.length ? '\n失败 ' + r.errors.length + ' 条：' + r.errors[0] : ''));
+          box.close(); if (onDone) onDone();
+        });
+      });
+      actBox.appendChild(ok);
+      actBox.appendChild(el('button', 'btn-mini', '取消')).addEventListener('click', function() { box.close(); });
+    }
+  }
+
+  /* ── 每日提醒设置 ── */
+  function loadRemind() {
+    req('/api/remind').then(function(d) {
+      if (!d || !d.config) return;
+      var c = d.config;
+      var on = document.getElementById('pr-remind-on');
+      if (!on) return;
+      on.checked = !!c.enabled;
+      document.getElementById('pr-remind-time').value = c.time || '09:00';
+      document.getElementById('pr-remind-overdue').checked = !!c.overdue_only;
+      document.getElementById('pr-remind-stat').textContent =
+        '待办 ' + (d.total_task || 0) + ' 项 / ' + (d.total_person || 0) + ' 人' +
+        (c.last ? ' · 上次发送 ' + c.last : ' · 还没发过');
+    }).catch(function() {
+      var bar = document.getElementById('pr-remind');
+      if (bar) bar.style.display = 'none';   // 非管理员看不到这块
+    });
+  }
+  function saveRemind() {
+    req('/api/remind', {
+      enabled: document.getElementById('pr-remind-on').checked,
+      time: document.getElementById('pr-remind-time').value || '09:00',
+      overdueOnly: document.getElementById('pr-remind-overdue').checked
+    }).then(function(d) {
+      if (d.error) { alert(d.error); return; }
+      loadRemind();
+      alert('已保存：' + (d.config.enabled ? '每天 ' + d.config.time + ' 给未完成任务的人发提醒' : '每日提醒已关闭'));
+    });
+  }
+  function runRemind() {
+    if (!confirm('现在就给所有有未完成任务的人各发一条钉钉提醒？')) return;
+    req('/api/remind/run', {}).then(function(d) {
+      if (d.error) { alert(d.error); return; }
+      alert('已发送 ' + (d.sent || 0) + ' 人 / ' + (d.tasks || 0) + ' 项' +
+        (d.no_account ? '\n' + d.no_account + ' 人没有钉钉账号，已跳过' : '') +
+        (d.failed && d.failed.length ? '\n失败 ' + d.failed.length + ' 人：' + d.failed[0] : ''));
+      loadRemind();
+    });
+  }
+
   var btn = document.getElementById('pr-import-btn');
   if (btn) btn.addEventListener('click', openImport);
+  var btnNew = document.getElementById('pr-new-btn');
+  if (btnNew) btnNew.addEventListener('click', openNewProject);
+  var btnRs = document.getElementById('pr-remind-save');
+  if (btnRs) btnRs.addEventListener('click', saveRemind);
+  var btnRr = document.getElementById('pr-remind-run');
+  if (btnRr) btnRr.addEventListener('click', runRemind);
+  if (document.getElementById('pr-remind-on')) loadRemind();
   window.addEventListener('hashchange', function() {
-    if (location.hash.replace('#/', '') === 'projects') loadList();
+    if (location.hash.replace('#/', '') === 'projects') { loadList(); loadRemind(); }
   });
   if (location.hash.replace('#/', '') === 'projects') loadList();
 })();

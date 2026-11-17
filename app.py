@@ -34,6 +34,7 @@ import github as gh
 import match
 import notify
 import projects as projects_mod
+import reminders
 from notable import _cell_text
 import settings
 import sync as syncer
@@ -191,6 +192,7 @@ def scheduler():
         try:
             # 攒批发送：本地几个同步脚本连着调接口时，只合成一条消息，不刷屏
             notify.flush_due()
+            reminders.tick()          # 未完成任务每日提醒（到点且今天没发过才发）
             cfg = db.cfg_all()
             auto = cfg.get('auto_sync', '1') == '1'
             ready = any(settings.platform_ready(p) for p in settings.PLATFORM_ORDER)
@@ -820,6 +822,39 @@ class Handler(BaseHTTPRequestHandler):
                 if d is None:
                     return self._send(404, {'error': '项目不存在'})
                 return self._send(200, d)
+            if p == '/api/remind':
+                if not self._sess(require_admin=True, q=q):
+                    return
+                return self._send(200, reminders.preview())
+            if p == '/api/projects/export':
+                s = self._sess(q=q)
+                if not s:
+                    return
+                p0 = db.project_get(q.get('id') or '')
+                if not p0:
+                    return self._send(404, {'error': '项目不存在'})
+                rows = _project_task_rows(p0['project_id'])
+                if s['kind'] != 'admin' and p0.get('owner_person_id') != (s.get('person_id') or ''):
+                    rows = [r for r in rows if r.get('person_id') == (s.get('person_id') or '')]
+                import csv
+                import io
+                buf = io.StringIO()
+                buf.write('\ufeff')          # BOM：Excel 直接双开不乱码
+                w = csv.writer(buf)
+                w.writerow(['任务名称', '执行人', '状态', '优先级', '截止日期', '所属项目'])
+                for r in rows:
+                    w.writerow([r.get('任务名称') or '', r.get('负责人') or '',
+                                r.get('状态') or '', r.get('优先级') or '',
+                                str(r.get('截止时间') or '')[:10], r.get('所属项目') or ''])
+                data = buf.getvalue().encode('utf-8')
+                fn = quote('%s-任务表.csv' % (p0['name'] or 'project'))
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/csv; charset=utf-8')
+                self.send_header('Content-Disposition', "attachment; filename*=UTF-8''%s" % fn)
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
             if p == '/api/analytics':
                 s = self._sess(q=q)
                 if not s:
@@ -1395,12 +1430,77 @@ class Handler(BaseHTTPRequestHandler):
                                                               '任务看板' if p_mode == 'task' else '原样'))
                 return self._send(200, {'ok': True, 'project_id': pid, 'mode': p_mode,
                                         'field_map': (p_new or {}).get('field_map') or {}})
+            if p == '/api/projects/local':
+                try:
+                    pid = projects_mod.create_local(body.get('name') or '',
+                                                    owner_person_id=s.get('person_id') or '')
+                except projects_mod.NotableError as e:
+                    return self._send(400, {'error': str(e)})
+                db.log('config', True, 0, '新建本地项目 %s' % (body.get('name') or ''))
+                return self._send(200, {'ok': True, 'project_id': pid, 'mode': 'local'})
+            if p == '/api/projects/bind':
+                p0 = db.project_get(body.get('projectId') or '')
+                if not p0:
+                    return self._send(404, {'error': '项目不存在'})
+                if s['kind'] != 'admin' and p0.get('owner_person_id') != (s.get('person_id') or ''):
+                    return self._send(403, {'error': '只有管理员或项目负责人可以绑定'})
+                try:
+                    info = projects_mod.analyze_link(body.get('link') or '')
+                    sheet = None
+                    for sh in (info.get('sheets') or []):
+                        if body.get('sheetId') and sh.get('id') == body.get('sheetId'):
+                            sheet = sh
+                            break
+                    if not sheet and (info.get('sheets') or []):
+                        sheet = info['sheets'][0]
+                    if not sheet:
+                        raise projects_mod.NotableError('该链接下没找到数据表')
+                    roles = sheet.get('roles') or {}
+                    fm = {k: (roles.get(k) or {}).get('field', '') for k in projects_mod.ROLES}
+                    p1 = projects_mod.bind_sheet(p0, info.get('base_id') or '', sheet.get('id') or '',
+                                                 sheet.get('name') or '',
+                                                 info.get('url') or body.get('link') or '', fm)
+                    pushed, errs = 0, []
+                    if body.get('push'):
+                        todo = [r for r in _project_task_rows(p0['project_id'])
+                                if not str(r.get('钉钉任务ID') or '').startswith('aitbl:')]
+                        pushed, errs = projects_mod.push_local_tasks(p1, todo)
+                except projects_mod.NotableError as e:
+                    return self._send(400, {'error': str(e)})
+                db.log('config', True, pushed, '绑定钉钉表：%s → %s（推送 %d 条）'
+                       % (p0['name'], sheet.get('name') or '', pushed))
+                return self._send(200, {'ok': True, 'mode': projects_mod.project_mode(p1),
+                                        'pushed': pushed, 'errors': errs[:5],
+                                        'field_map': p1.get('field_map') or {}})
+            if p == '/api/remind':
+                if s['kind'] != 'admin':
+                    return self._send(403, {'error': '需要管理员权限'})
+                c = reminders.save(enabled=body.get('enabled'), time_=body.get('time'),
+                                   overdue_only=body.get('overdueOnly'), cap=body.get('cap'))
+                db.log('config', True, 0, '每日提醒：%s %s' % ('开' if c['enabled'] else '关', c['time']))
+                return self._send(200, {'ok': True, 'config': c})
+            if p == '/api/remind/run':
+                if s['kind'] != 'admin':
+                    return self._send(403, {'error': '需要管理员权限'})
+                return self._send(200, reminders.run_daily(force=True))
             if p == '/api/projects/task/new':
                 p0 = db.project_get(body.get('projectId') or '')
                 if not p0:
                     return self._send(404, {'error': '项目不存在'})
                 if s['kind'] != 'admin' and p0.get('owner_person_id') != (s.get('person_id') or ''):
                     return self._send(403, {'error': '只有管理员或项目负责人可以新增任务'})
+                if projects_mod.is_local(p0):
+                    # 工作台自建项目：本地为主存储，不写钉钉
+                    try:
+                        ids = projects_mod.add_local_task(
+                            p0, body.get('title') or '', body.get('users') or [],
+                            status=body.get('status') or '', priority=body.get('priority') or '',
+                            due=body.get('due') or '')
+                    except projects_mod.NotableError as e:
+                        return self._send(400, {'error': str(e)})
+                    db.log('config', True, len(ids), '项目「%s」新增本地任务：%s'
+                           % (p0['name'], str(body.get('title') or '')[:30]))
+                    return self._send(200, {'ok': True, 'record_ids': ids, 'local': True})
                 people = _dingtalk_people(body.get('users') or [])
                 users = [(x['name'], x['union_id']) for x in people]
                 try:
@@ -1441,6 +1541,13 @@ class Handler(BaseHTTPRequestHandler):
                 rid = str(body.get('recordId') or '').strip()
                 if not rid:
                     return self._send(400, {'error': '缺少 recordId'})
+                if projects_mod.is_local(p0):
+                    try:
+                        n = projects_mod.del_local_task(p0, rid)
+                    except projects_mod.NotableError as e:
+                        return self._send(400, {'error': str(e)})
+                    db.log('config', True, n, '项目「%s」删除本地任务 %s' % (p0['name'], rid))
+                    return self._send(200, {'ok': True, 'local_removed': n})
                 try:
                     n = projects_mod.delete_task(p0, rid)
                 except projects_mod.NotableError as e:
@@ -1738,6 +1845,25 @@ def _dingtalk_people(names):
     return [m[k] for k in sorted(m)]
 
 
+def _dingtalk_all_people(limit=300):
+    """全员（有钉钉账号的）：本地项目新增任务时选执行人用"""
+    c = db.connect()
+    with db._lock:
+        rows = c.execute("SELECT a.person_id, a.extra, p.name FROM accounts a "
+                         "JOIN persons p ON p.person_id = a.person_id "
+                         "WHERE a.platform='dingtalk' AND p.name IS NOT NULL "
+                         "ORDER BY p.name LIMIT ?", (limit,)).fetchall()
+    out = []
+    for pid, extra, nm in rows:
+        uid = ''
+        try:
+            uid = (json.loads(extra or '{}') or {}).get('unionid') or ''
+        except Exception:
+            pass
+        out.append({'name': nm, 'person_id': pid, 'union_id': uid})
+    return out
+
+
 def _project_stats(recs):
     today = time.strftime('%Y-%m-%d')
     total = len(recs)
@@ -1774,7 +1900,8 @@ def projects_list(s):
         pid = p['project_id']
         is_owner = p.get('owner_person_id') == me
         # 原样导入项目：整表镜像，不按人归属 → 仅负责人/管理员可见
-        if projects_mod.project_mode(p) == 'raw':
+        pm = projects_mod.project_mode(p)
+        if pm == 'raw':
             if not (is_admin or is_owner):
                 continue
             out.append({'project_id': pid, 'name': p['name'], 'sheet_name': p.get('sheet_name') or '',
@@ -1792,7 +1919,7 @@ def projects_list(s):
         out.append({'project_id': pid, 'name': p['name'], 'sheet_name': p.get('sheet_name') or '',
                     'url': p.get('url') or '', 'status': p.get('status') or 'active',
                     'owner': is_owner, 'mine_only': not (is_admin or is_owner),
-                    'mode': 'task', 'stats': st})
+                    'mode': pm, 'stats': st})
     return {'projects': out, 'kind': s['kind']}
 
 
@@ -1861,6 +1988,9 @@ def project_detail(pid, s):
     recs = _project_task_rows(pid) if (is_admin or is_owner) else _project_task_rows(pid, person_id=me)
     fields = ('任务名称', '状态', '优先级', '截止时间', '负责人', '处理链接', '来源应用', '更新时间', '钉钉任务ID')
     tasks = [{k: r.get(k) for k in fields if r.get(k)} for r in recs]
+    for t, r in zip(tasks, recs):
+        # 本地任务（工作台自建）删除时用这个 ID
+        t['record_id'] = r.get('record_id') or r.get('_id') or ''
     # 执行人候选：项目里出现过的负责人，去重后给出可@的钉钉身份
     owner_names = set()
     for r in recs:
@@ -1870,9 +2000,11 @@ def project_detail(pid, s):
                 owner_names.add(nm)
     owner_names.add(str((db.person_get(me) or {}).get('name') or ''))
     owner_names.discard('')
+    # 本地项目没有历史执行人，直接给全员名单供选择
+    people = _dingtalk_all_people() if head['mode'] == 'local' else _dingtalk_people(owner_names)
     return {'project': head,
             'stats': _project_stats(recs), 'tasks': tasks,
-            'people': _dingtalk_people(owner_names)}
+            'people': people}
 
 
 def persons_payload():

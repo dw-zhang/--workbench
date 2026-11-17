@@ -644,6 +644,11 @@ def project_add(name, base_id, sheet_id, sheet_name='', url='', field_map=None,
                 owner_person_id=''):
     c = connect()
     pid = 'pj_' + uuid.uuid4().hex[:12]
+    # 本地项目（工作台手工创建、还没绑钉钉表）：base_id 用 local:<pid> 占位，
+    # 否则 (base_id, sheet_id) 唯一索引会让第二个本地项目插入失败
+    if not str(base_id or '').strip():
+        base_id = 'local:' + pid
+        sheet_id = str(sheet_id or '').strip() or pid
     with _lock:
         c.execute('INSERT INTO projects(project_id,name,base_id,sheet_id,sheet_name,url,'
                   'field_map,owner_person_id,status,created_at,updated_at) '
