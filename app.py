@@ -33,6 +33,7 @@ import db
 import github as gh
 import match
 import notify
+import projects as projects_mod
 import settings
 import sync as syncer
 from dingtalk import Client as DingClient, DingError
@@ -805,6 +806,19 @@ class Handler(BaseHTTPRequestHandler):
                 if not self._sess(require_admin=True, q=q):
                     return
                 return self._send(200, persons_payload())
+            if p == '/api/projects':
+                s = self._sess(q=q)
+                if not s:
+                    return
+                return self._send(200, projects_list(s))
+            if p == '/api/projects/detail':
+                s = self._sess(q=q)
+                if not s:
+                    return
+                d = project_detail(q.get('id') or '', s)
+                if d is None:
+                    return self._send(404, {'error': '项目不存在'})
+                return self._send(200, d)
             if p == '/api/analytics':
                 s = self._sess(q=q)
                 if not s:
@@ -1359,6 +1373,35 @@ class Handler(BaseHTTPRequestHandler):
                 if s['kind'] != 'admin':
                     return self._send(403, {'error': '需要管理员权限'})
                 return self._send(200, person_action(body))
+            if p == '/api/projects/import':
+                if s['kind'] != 'admin':
+                    return self._send(403, {'error': '需要管理员权限'})
+                try:
+                    return self._send(200, projects_mod.analyze_link(body.get('link') or ''))
+                except projects_mod.NotableError as e:
+                    return self._send(400, {'error': str(e)})
+            if p == '/api/projects':
+                if s['kind'] != 'admin':
+                    return self._send(403, {'error': '需要管理员权限'})
+                try:
+                    pid = projects_mod.create_project(
+                        body.get('name') or '', body.get('baseId') or '', body.get('sheetId') or '',
+                        sheet_name=body.get('sheetName') or '', url=body.get('url') or '',
+                        field_map=body.get('fieldMap') or {},
+                        owner_person_id=s.get('person_id') or '')
+                except projects_mod.NotableError as e:
+                    return self._send(400, {'error': str(e)})
+                db.log('config', True, 0, '新建项目 %s' % (body.get('name') or ''))
+                return self._send(200, {'ok': True, 'project_id': pid})
+            if p == '/api/projects/resume':
+                if s['kind'] != 'admin':
+                    return self._send(403, {'error': '需要管理员权限'})
+                p0 = db.project_get(body.get('projectId') or '')
+                if not p0:
+                    return self._send(404, {'error': '项目不存在'})
+                db.project_set(p0['project_id'], status='active')
+                db.log('config', True, 0, '恢复项目同步 %s' % p0['name'])
+                return self._send(200, {'ok': True})
             if p == '/api/admin/password':
                 if s['kind'] != 'admin':
                     return self._send(403, {'error': '需要管理员权限'})
@@ -1395,6 +1438,16 @@ class Handler(BaseHTTPRequestHandler):
             s = self._sess()
             if not s:
                 return
+            if body.get('projectId'):
+                pid0 = body.get('projectId')
+                p0 = db.project_get(pid0)
+                if not p0:
+                    return self._send(404, {'error': '项目不存在'})
+                if s['kind'] != 'admin' and p0.get('owner_person_id') != (s.get('person_id') or ''):
+                    return self._send(403, {'error': '只有管理员或项目负责人可以删除项目'})
+                db.project_del(pid0)
+                db.log('config', True, 0, '删除项目 %s' % p0['name'])
+                return self._send(200, {'ok': True})
             _db, _rid = body.get('db', ''), body.get('recordId', '')
             owner = db.record_person(_db, _rid)
             if owner is None:
@@ -1592,6 +1645,83 @@ class Handler(BaseHTTPRequestHandler):
         db.log('robot', True, 1, '群消息入库%s：%s（%s）' % (tag, content[:30], group))
         print('[robot] 收到消息%s：%s · %s：%s' % (tag, group, sender, content[:60]))
         return self._send(200, {'msgtype': 'empty'})
+
+
+# ── 项目管理（多维表格绑定）───────────────────────────────────────────
+def _project_task_rows(pid, person_id=None):
+    """某项目的任务行；person_id=None 时取全量（管理员/项目负责人）"""
+    flt = {'property': {'property': '所属项目ID', 'text': {'equals': pid}}}
+    r = db.query(db.TABLES['task'], sort='截止时间', direction='ascending',
+                 size=100000, person_id=person_id, filters=flt)
+    return r.get('results') or []
+
+
+def _project_stats(recs):
+    today = time.strftime('%Y-%m-%d')
+    total = len(recs)
+    done = sum(1 for r in recs if r.get('状态') == '已完成')
+    doing = sum(1 for r in recs if r.get('状态') == '进行中')
+    overdue = sum(1 for r in recs if r.get('状态') != '已完成'
+                  and r.get('截止时间') and str(r['截止时间'])[:10] < today)
+    members = {}
+    for r in recs:
+        for nm in str(r.get('负责人') or '').split('、'):
+            nm = nm.strip()
+            if not nm:
+                continue
+            m = members.setdefault(nm, {'name': nm, 'total': 0, 'done': 0, 'overdue': 0})
+            m['total'] += 1
+            if r.get('状态') == '已完成':
+                m['done'] += 1
+            elif r.get('截止时间') and str(r['截止时间'])[:10] < today:
+                m['overdue'] += 1
+    dues = sorted(str(r['截止时间'])[:10] for r in recs if r.get('截止时间'))
+    return {'total': total, 'done': done, 'doing': doing, 'todo': total - done - doing,
+            'overdue': overdue,
+            'progress': round(done * 100.0 / total) if total else 0,
+            'members': sorted(members.values(), key=lambda m: -m['total']),
+            'due_min': dues[0] if dues else '', 'due_max': dues[-1] if dues else ''}
+
+
+def projects_list(s):
+    """项目清单：管理员/项目负责人看全项目统计，普通成员只看到自己参与的项目与自己的任务量"""
+    me = s.get('person_id') or ''
+    is_admin = s['kind'] == 'admin'
+    out = []
+    for p in db.projects_all():
+        pid = p['project_id']
+        is_owner = p.get('owner_person_id') == me
+        if is_admin or is_owner:
+            recs = _project_task_rows(pid)
+        else:
+            recs = _project_task_rows(pid, person_id=me)
+            if not recs:
+                continue  # 与项目无关的员工：不出现（避免全公司看到项目名）
+        st = _project_stats(recs)
+        out.append({'project_id': pid, 'name': p['name'], 'sheet_name': p.get('sheet_name') or '',
+                    'url': p.get('url') or '', 'status': p.get('status') or 'active',
+                    'owner': is_owner, 'mine_only': not (is_admin or is_owner),
+                    'stats': st})
+    return {'projects': out, 'kind': s['kind']}
+
+
+def project_detail(pid, s):
+    """单项目详情：负责人/管理员拿全量任务，普通成员只拿自己的（含时间线所需字段）"""
+    p = db.project_get(pid)
+    if not p:
+        return None
+    me = s.get('person_id') or ''
+    is_admin = s['kind'] == 'admin'
+    is_owner = p.get('owner_person_id') == me
+    recs = _project_task_rows(pid) if (is_admin or is_owner) else _project_task_rows(pid, person_id=me)
+    fields = ('任务名称', '状态', '优先级', '截止时间', '负责人', '处理链接', '来源应用', '更新时间')
+    tasks = [{k: r.get(k) for k in fields if r.get(k)} for r in recs]
+    return {'project': {'project_id': pid, 'name': p['name'],
+                        'sheet_name': p.get('sheet_name') or '',
+                        'url': p.get('url') or '', 'status': p.get('status') or 'active',
+                        'owner': is_owner,
+                        'field_map': p.get('field_map') or {}},
+            'stats': _project_stats(recs), 'tasks': tasks}
 
 
 def persons_payload():

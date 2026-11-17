@@ -265,6 +265,15 @@ def sync_notable(cfg, say):
             continue
         say('多维表格：Base %s… 共 %d 张数据表' % (bid[:8], len(sheets)))
         for sheet in sheets:
+            sid0 = str(sheet.get('id') or sheet.get('sheetId') or '') if isinstance(sheet, dict) else str(sheet)
+            try:
+                bound = db.project_by_sheet(bid, sid0)
+            except Exception:
+                bound = None
+            if bound:
+                say('  %s：已绑定项目「%s」，由项目同步接管' % (sheet.get('name') or sid0[:8],
+                                                              bound.get('name', '')))
+                continue
             try:
                 sname, recs = _iter_records(tok, bid, sheet)
             except NotableError as e:

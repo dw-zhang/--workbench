@@ -21,6 +21,7 @@ import db
 import match
 import notable
 import notify
+import projects
 import settings
 from dingtalk import Client as DingClient, DingError
 from feishu import Client as FeishuClient, FeishuError
@@ -1665,7 +1666,7 @@ def sync_all(progress=None):
     for name, fn in (('dingtalk', sync_dingtalk), ('feishu', sync_feishu),
                      ('github', sync_github), ('gitlab', sync_gitlab), ('gitea', sync_gitea),
                      ('zentao', sync_zentao), ('kingdee', sync_kingdee), ('yonyou', sync_yonyou),
-                     ('notable', notable.sync_notable)):
+                     ('notable', notable.sync_notable), ('projects', projects.sync_projects)):
         try:
             st = fn(cfg, say)
             if st is None:

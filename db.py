@@ -116,6 +116,20 @@ def _init(c):
       created_at TEXT,
       expires    TEXT
     );
+    CREATE TABLE IF NOT EXISTS projects (
+      project_id      TEXT PRIMARY KEY,
+      name            TEXT,
+      base_id         TEXT NOT NULL,
+      sheet_id        TEXT NOT NULL,
+      sheet_name      TEXT,
+      url             TEXT,
+      field_map       TEXT,
+      owner_person_id TEXT,
+      status          TEXT DEFAULT 'active',
+      created_at      TEXT,
+      updated_at      TEXT
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_sheet ON projects(base_id, sheet_id);
     CREATE TABLE IF NOT EXISTS judge_log (
       id         TEXT PRIMARY KEY,
       pid        TEXT,
@@ -613,6 +627,97 @@ def person_del(pid):
     with _lock:
         c.execute('DELETE FROM persons WHERE person_id=?', (pid,))
         c.execute('DELETE FROM accounts WHERE person_id=?', (pid,))
+        c.commit()
+    return True
+
+
+# ── 项目（多维表格绑定）：一个链接（Base+Sheet）= 一个项目 ────────────
+def project_add(name, base_id, sheet_id, sheet_name='', url='', field_map=None,
+                owner_person_id=''):
+    c = connect()
+    pid = 'pj_' + uuid.uuid4().hex[:12]
+    with _lock:
+        c.execute('INSERT INTO projects(project_id,name,base_id,sheet_id,sheet_name,url,'
+                  'field_map,owner_person_id,status,created_at,updated_at) '
+                  'VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+                  (pid, name, base_id, sheet_id, sheet_name, url,
+                   json.dumps(field_map or {}, ensure_ascii=False),
+                   owner_person_id, 'active', now(), now()))
+        c.commit()
+    return pid
+
+
+def _row2project(r):
+    if not r:
+        return None
+    d = dict(r)
+    try:
+        d['field_map'] = json.loads(d.get('field_map') or '{}')
+    except Exception:
+        d['field_map'] = {}
+    return d
+
+
+def project_get(pid):
+    c = connect()
+    with _lock:
+        r = c.execute('SELECT * FROM projects WHERE project_id=?', (pid,)).fetchone()
+    return _row2project(r)
+
+
+def project_by_sheet(base_id, sheet_id):
+    """同一张表只能绑定一个项目（唯一索引兜底）"""
+    c = connect()
+    with _lock:
+        r = c.execute('SELECT * FROM projects WHERE base_id=? AND sheet_id=?',
+                      (base_id, sheet_id)).fetchone()
+    return _row2project(r)
+
+
+def projects_all(status=None):
+    c = connect()
+    with _lock:
+        if status:
+            rows = c.execute('SELECT * FROM projects WHERE status=? ORDER BY created_at',
+                             (status,)).fetchall()
+        else:
+            rows = c.execute('SELECT * FROM projects ORDER BY created_at').fetchall()
+    return [_row2project(r) for r in rows]
+
+
+def project_set(pid, **kw):
+    if not kw:
+        return False
+    kw['updated_at'] = now()
+    cols, vals = [], []
+    for k, v in kw.items():
+        cols.append('%s=?' % k)
+        vals.append(v)
+    c = connect()
+    with _lock:
+        c.execute('UPDATE projects SET %s WHERE project_id=?' % ','.join(cols),
+                  vals + [pid])
+        c.commit()
+    return True
+
+
+def project_del(pid):
+    c = connect()
+    with _lock:
+        c.execute('DELETE FROM projects WHERE project_id=?', (pid,))
+        # 清掉任务行上的项目标签（任务本身保留，回退为普通任务）
+        rows = c.execute("SELECT id, data FROM records WHERE database='task' "
+                         "AND data LIKE ?", ('%' + pid + '%',)).fetchall()
+        for r in rows:
+            try:
+                d = json.loads(r['data'])
+            except Exception:
+                continue
+            if d.get('所属项目ID') == pid:
+                d.pop('所属项目ID', None)
+                d.pop('所属项目', None)
+                c.execute('UPDATE records SET data=? WHERE id=?',
+                          (json.dumps(d, ensure_ascii=False), r['id']))
         c.commit()
     return True
 

@@ -325,6 +325,31 @@
   @media (max-width: 640px) { .cat-form { grid-template-columns: 1fr; } .cat-span { grid-column: auto; } }
   .cat-mod { margin-bottom: 14px; }
   .cat-mod-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  /* ── 项目管理 ── */
+  .pr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .pr-card { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 18px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .pr-card:hover { border-color: #2563eb; box-shadow: 0 2px 10px rgba(37,99,235,.08); }
+  .pr-card-head { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #111827; }
+  .pr-card-head b { font-weight: 700; }
+  .pr-meta { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+  .pr-bar { height: 8px; background: #f1f5f9; border-radius: 4px; margin-top: 12px; overflow: hidden; }
+  .pr-bar i { display: block; height: 100%; background: #2563eb; border-radius: 4px; }
+  .pr-nums { display: flex; gap: 12px; font-size: 12px; color: #6b7280; margin-top: 8px; flex-wrap: wrap; }
+  .pr-del { position: absolute; top: 10px; right: 10px; border: none; background: transparent; color: #cbd5e1; cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 6px; }
+  .pr-del:hover { color: #dc2626; background: #f8fafc; }
+  .pr-tag { display: inline-block; font-size: 11px; border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+  .pr-steps { font-size: 12px; color: #6b7280; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; line-height: 1.8; }
+  .pr-sheet { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-top: 10px; cursor: pointer; }
+  .pr-sheet.on { border-color: #2563eb; background: #eff6ff; }
+  .pr-tl { margin-top: 12px; }
+  .pr-tl-row { display: grid; grid-template-columns: 200px 1fr 84px; gap: 10px; align-items: center; font-size: 12px; color: #374151; padding: 4px 0; }
+  .pr-tl-track { position: relative; height: 14px; background: #f1f5f9; border-radius: 4px; }
+  .pr-tl-bar { position: absolute; top: 0; height: 100%; border-radius: 4px; min-width: 10px; }
+  .pr-tl-when { color: #9ca3af; text-align: right; }
+  .pr-map { display: grid; grid-template-columns: 92px 1fr; gap: 10px 12px; align-items: center; margin-top: 12px; font-size: 13px; }
+  .pr-map label { color: #6b7280; }
+  .pr-map select { width: 100%; }
+  .pr-conf { font-size: 11px; color: #9ca3af; margin-left: 6px; }
   .cat-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #f0f1f5; font-size: 13px; }
   .cat-row:last-child { border-bottom: none; }
   .cat-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
@@ -583,6 +608,7 @@
     <div class="side-group">
       <div class="side-title">工作区</div>
       <a class="active" data-nav="index" href="#/">🏠 首页</a>
+      <a data-nav="projects" href="#/projects">🗂️ 项目管理</a>
       <a data-nav="tasks" href="#/tasks">✅ 任务管理</a>
       <a data-nav="board" href="#/board">📊 数据看板</a>
       <a data-nav="schedboard" href="#/schedboard">🗓️ 日程看板</a>
@@ -750,6 +776,18 @@
         <input name="project" placeholder="所属项目" type="text">
         <button id="tk-task-submit" type="submit">＋ 新建任务</button>
       </form>
+    </div>
+</section>
+<section class="view" hidden id="view-projects">
+    <div class="page-head" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap">
+      <div>
+        <h1 class="page-title">项目管理</h1>
+        <div style="color:#6b7280; font-size:13px; margin-top:4px">一个钉钉多维表格链接 = 一个项目 · 数据每 30 分钟自动同步 · 任务同时出现在任务管理里</div>
+      </div>
+      <button class="btn-mini primary" id="pr-import-btn" style="margin-left:auto; padding:8px 16px; font-size:13px">＋ 导入项目</button>
+    </div>
+    <div class="pr-grid" id="pr-cards">
+      <div class="empty" style="padding:32px; text-align:center; color:#9ca3af">数据加载中…</div>
     </div>
 </section>
 <section class="view" hidden id="view-board">
@@ -1678,7 +1716,7 @@
   /* ---- 视图路由 ---- */
   try {
   (function() {
-    var VIEWS = ['index', 'tasks', 'board', 'schedboard', 'waiting', 'files', 'schedule', 'meetings', 'categories', 'settings', 'apps', 'ai'];
+    var VIEWS = ['index', 'projects', 'tasks', 'board', 'schedboard', 'waiting', 'files', 'schedule', 'meetings', 'categories', 'settings', 'apps', 'ai'];
     function route() {
       var h = location.hash.replace('#/', '') || 'index';
       if (VIEWS.indexOf(h) < 0) h = 'index';
@@ -2563,6 +2601,313 @@ try {
 })();
 } catch (_e) { console.error("[module] 模块初始化失败:", _e); if (window.__wbShowErr) window.__wbShowErr(String((_e && _e.message) || _e)); }
 
+
+/* ---- 项目管理：多维表格链接 → 项目档案 → 进度/时间线/按人完成节点 ---- */
+try {
+(function() {
+  var V = document.getElementById('view-projects');
+  if (!V) return;
+  var KIND = 'user';
+
+  function tok() { try { return localStorage.getItem('wb_token') || ''; } catch (e) { return ''; } }
+  function req(path, body, method) {
+    var opt = { method: method || (body ? 'POST' : 'GET'), headers: { 'Content-Type': 'application/json' } };
+    var t = tok(); if (t) opt.headers.Authorization = 'Bearer ' + t;
+    if (body) opt.body = JSON.stringify(body);
+    return fetch(path, opt).then(function(r) { return r.json().catch(function() { return {}; }); });
+  }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function el(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+  function mask0(h3) {
+    var m = el('div', 'wb-modal-mask');
+    var b = el('div', 'wb-modal');
+    b.style.width = 'min(760px, 94vw)';
+    b.appendChild(el('h3', null, h3));
+    m.appendChild(b);
+    m.addEventListener('click', function(e) { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+    return { m: m, b: b, close: function() { m.remove(); } };
+  }
+
+  /* ── 卡片列表 ── */
+  function loadList() {
+    req('/api/projects').then(function(d) {
+      KIND = d.kind || 'user';
+      renderCards(d.projects || []);
+    }).catch(function() {
+      var box = document.getElementById('pr-cards');
+      if (box) box.innerHTML = '<div class="empty" style="padding:32px; text-align:center; color:#9ca3af">加载失败，请刷新重试</div>';
+    });
+  }
+  function renderCards(list) {
+    var box = document.getElementById('pr-cards');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!list.length) {
+      box.innerHTML = '<div class="empty" style="padding:36px; text-align:center; color:#9ca3af; grid-column:1/-1">还没有项目。' +
+        (KIND === 'admin' ? '点右上角「＋ 导入项目」，把钉钉多维表格的链接贴进来 —— 一个链接就是一个项目。' : '请管理员在「导入项目」里绑定多维表格链接。') + '</div>';
+      return;
+    }
+    list.forEach(function(p) {
+      var st = p.stats || {};
+      var card = el('div', 'pr-card');
+      var head = el('div', 'pr-card-head');
+      head.appendChild(el('b', null, p.name));
+      if (p.status === 'paused') head.appendChild(el('span', 'pr-tag', '已暂停')).style.cssText = 'background:#fee2e2;color:#dc2626';
+      if (p.owner) head.appendChild(el('span', 'pr-tag', '我负责')).style.cssText = 'background:#dbeafe;color:#2563eb';
+      card.appendChild(head);
+      card.appendChild(el('div', 'pr-meta', (p.sheet_name || '多维表格') + ' · ' + (p.mine_only ? '我的名下任务' : '全项目任务')));
+      var bar = el('div', 'pr-bar'); var fill = el('i'); fill.style.width = (st.progress || 0) + '%'; bar.appendChild(fill);
+      card.appendChild(bar);
+      var nums = el('div', 'pr-nums');
+      nums.appendChild(el('span', null, (st.progress || 0) + '% 完成'));
+      nums.appendChild(el('span', null, (st.total || 0) + ' 任务'));
+      if (st.doing) nums.appendChild(el('span', null, st.doing + ' 进行中'));
+      var ov = el('span', null, (st.overdue || 0) + ' 逾期'); if (st.overdue) ov.style.color = '#dc2626';
+      nums.appendChild(ov);
+      if (st.due_max) nums.appendChild(el('span', null, '节点至 ' + st.due_max));
+      card.appendChild(nums);
+      if (p.owner || KIND === 'admin') {
+        var del = el('button', 'pr-del', '✕'); del.title = '删除项目（任务本身保留）';
+        del.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (!confirm('删除项目「' + p.name + '」？\n任务本身保留在任务管理里，仅解除项目绑定。')) return;
+          req('/api/projects', { projectId: p.project_id }, 'DELETE').then(function() { loadList(); });
+        });
+        card.appendChild(del);
+      }
+      card.addEventListener('click', function() { openDetail(p.project_id); });
+      box.appendChild(card);
+    });
+  }
+
+  /* ── 项目详情弹层：统计 + 时间线 + 按人 + 任务表 ── */
+  var ST_COLOR = { '已完成': '#16a34a', '进行中': '#2563eb', '待处理': '#f59e0b' };
+  function tagOf(st) {
+    var c = ST_COLOR[st] || '#6b7280';
+    var s = el('span', 'pr-tag', st || '—');
+    s.style.cssText = 'background:' + c + '1a;color:' + c;
+    return s;
+  }
+  function openDetail(pid) {
+    req('/api/projects/detail?id=' + encodeURIComponent(pid)).then(function(d) {
+      if (!d || !d.project) { alert('项目加载失败'); return; }
+      var st = d.stats || {}, tasks = d.tasks || [];
+      var box = mask0(d.project.name + ' · 项目详情');
+      var b = box.b;
+      if (d.project.status === 'paused') {
+        var warn = el('div', 'pr-steps'); warn.style.cssText = 'background:#fef2f2;border-color:#fecaca;color:#991b1b';
+        warn.textContent = '⚠ 该项目的表格结构发生过变化，同步已自动暂停。检查多维表格的列是否被改动后，请联系管理员在数据恢复。';
+        b.appendChild(warn);
+      }
+      /* 统计行 */
+      var nums = el('div', 'pr-nums'); nums.style.marginTop = '2px';
+      [['进度', (st.progress || 0) + '%'], ['任务', st.total || 0], ['已完成', st.done || 0],
+       ['进行中', st.doing || 0], ['待处理', st.todo || 0], ['逾期', st.overdue || 0],
+       ['节点', (st.due_min && st.due_max) ? st.due_min + ' ~ ' + st.due_max : '—']].forEach(function(kv) {
+        var s = el('span'); var bb = el('b', null, kv[1]); bb.style.color = '#111827';
+        s.appendChild(bb); s.appendChild(document.createTextNode(' ' + kv[0]));
+        nums.appendChild(s);
+      });
+      b.appendChild(nums);
+      /* 时间线（甘特）：按截止日期把任务排到轨道上 */
+      var dated = tasks.filter(function(t) { return t['截止时间']; })
+        .sort(function(a, b2) { return String(a['截止时间']) < String(b2['截止时间']) ? -1 : 1; });
+      if (dated.length) {
+        var tl = el('div', 'pr-tl');
+        tl.appendChild(el('div', null, '时间线（按完成节点排序）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
+        var lo = String(dated[0]['截止时间']).slice(0, 10), hi = String(dated[dated.length - 1]['截止时间']).slice(0, 10);
+        var loT = new Date(lo + 'T00:00:00').getTime(), hiT = new Date(hi + 'T23:59:59').getTime();
+        var span = Math.max(1, hiT - loT);
+        var todayPct = Math.round((Date.now() - loT) / span * 100);
+        dated.slice(0, 40).forEach(function(t) {
+          var row = el('div', 'pr-tl-row');
+          var nm = el('div', null, String(t['任务名称'] || '').slice(0, 26));
+          nm.title = t['任务名称']; nm.style.overflow = 'hidden'; nm.style.textOverflow = 'ellipsis'; nm.style.whiteSpace = 'nowrap';
+          row.appendChild(nm);
+          var track = el('div', 'pr-tl-track');
+          var dueS = String(t['截止时间']).slice(0, 10);
+          var pct = Math.round((new Date(dueS + 'T12:00:00').getTime() - loT) / span * 100);
+          var bar = el('div', 'pr-tl-bar');
+          var c = ST_COLOR[t['状态']] || '#6b7280';
+          bar.style.cssText = 'left:' + Math.max(0, pct - 4) + '%;width:8%;background:' + c;
+          track.appendChild(bar);
+          if (todayPct > 0 && todayPct < 100) {
+            var td = el('div'); td.style.cssText = 'position:absolute;top:-2px;left:' + todayPct + '%;width:1px;height:18px;background:#dc2626';
+            track.appendChild(td);
+          }
+          row.appendChild(track);
+          row.appendChild(el('div', 'pr-tl-when', dueS.slice(5)));
+          tl.appendChild(row);
+        });
+        var cap = el('div', 'note', '红线 = 今天 · 色条 = 截止节点（绿已完成 / 蓝进行中 / 黄待处理）· 最多显示 40 条');
+        tl.appendChild(cap);
+        b.appendChild(tl);
+      }
+      /* 按人统计 */
+      if ((st.members || []).length) {
+        b.appendChild(el('div', null, '按人分布')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
+        var tb = el('table', 'tasks'); tb.style.marginTop = '8px';
+        tb.innerHTML = '<thead><tr><th>成员</th><th>任务</th><th>已完成</th><th>逾期</th></tr></thead>';
+        var tb2 = el('tbody');
+        st.members.forEach(function(m) {
+          var tr = el('tr');
+          tr.appendChild(el('td', null, m.name));
+          tr.appendChild(el('td', null, String(m.total)));
+          tr.appendChild(el('td', null, String(m.done)));
+          var od = el('td', null, String(m.overdue)); if (m.overdue) od.style.color = '#dc2626';
+          tr.appendChild(od);
+          tb2.appendChild(tr);
+        });
+        tb.appendChild(tb2); b.appendChild(tb);
+      }
+      /* 任务明细 */
+      b.appendChild(el('div', null, '任务明细（' + tasks.length + '）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
+      var t2 = el('table', 'tasks'); t2.style.marginTop = '8px';
+      t2.innerHTML = '<thead><tr><th>任务名称</th><th>负责人</th><th>完成节点</th><th>状态</th></tr></thead>';
+      var t3 = el('tbody');
+      if (!tasks.length) {
+        var tr0 = el('tr'); var td0 = el('td', 'empty', '该项目暂无你名下的任务'); td0.colSpan = 4; tr0.appendChild(td0); t3.appendChild(tr0);
+      } else {
+        tasks.forEach(function(t) {
+          var tr = el('tr');
+          var tdN = el('td');
+          var u = t['处理链接'];
+          if (u) { var a = el('a', null, t['任务名称']); a.href = u; a.target = '_blank'; a.rel = 'noopener'; tdN.appendChild(a); }
+          else tdN.textContent = t['任务名称'] || '';
+          tr.appendChild(tdN);
+          tr.appendChild(el('td', null, t['负责人'] || '—'));
+          tr.appendChild(el('td', null, t['截止时间'] ? String(t['截止时间']).slice(0, 10) : '—'));
+          var tdS = el('td'); tdS.appendChild(tagOf(t['状态'])); tr.appendChild(tdS);
+          t3.appendChild(tr);
+        });
+      }
+      t2.appendChild(t3); b.appendChild(t2);
+      var acts = el('div', 'wb-actions');
+      if (d.project.url) {
+        var bOpen = el('button', 'btn-mini primary', '打开钉钉多维表格');
+        bOpen.addEventListener('click', function() { window.open(d.project.url, '_blank'); });
+        acts.appendChild(bOpen);
+      }
+      acts.appendChild(el('button', 'btn-mini', '关闭')).addEventListener('click', function() { box.close(); });
+      b.appendChild(acts);
+    });
+  }
+
+  /* ── 导入向导：链接 → 分析 → 选表 → 确认字段映射 ── */
+  var ANALYZE = null;
+  function openImport() {
+    var box = mask0('导入项目（钉钉多维表格）');
+    var b = box.b;
+    var tip = el('div', 'pr-steps', '① 把多维表格的分享链接贴进来 → ② 选一张数据表 → ③ 确认列的含义（AI 已预判）→ ④ 建档后 30 分钟内首批任务自动进工作台');
+    b.appendChild(tip);
+    var rowIn = el('div'); rowIn.style.cssText = 'display:flex; gap:8px; margin-top:14px';
+    var inp = el('input'); inp.type = 'text'; inp.placeholder = 'https://alidocs.dingtalk.com/i/nodes/…';
+    inp.style.cssText = 'flex:1; border:1px solid #e5e7eb; border-radius:8px; padding:9px 12px; font-size:13px';
+    rowIn.appendChild(inp);
+    var btnA = el('button', 'btn-mini primary', '分析结构');
+    btnA.style.padding = '8px 14px';
+    rowIn.appendChild(btnA);
+    b.appendChild(rowIn);
+    var stage = el('div'); b.appendChild(stage);
+    btnA.addEventListener('click', function() {
+      if (!inp.value.trim()) return;
+      btnA.disabled = true; btnA.textContent = '分析中…'; stage.innerHTML = '';
+      req('/api/projects/import', { link: inp.value.trim() }).then(function(d) {
+        btnA.disabled = false; btnA.textContent = '分析结构';
+        if (d.error) { stage.innerHTML = ''; stage.appendChild(el('div', 'pr-steps', '❌ ' + d.error)); return; }
+        ANALYZE = d; renderSheets(stage, inp.value.trim());
+      });
+    });
+    inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') btnA.click(); });
+  }
+  function renderSheets(stage, link) {
+    stage.appendChild(el('div', null, '② 选择项目对应的数据表')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
+    var sheets = (ANALYZE && ANALYZE.sheets) || [];
+    var picked = null;
+    sheets.forEach(function(sh) {
+      if (!sh.id) return;
+      var card = el('div', 'pr-sheet');
+      card.innerHTML = '<b>' + esc(sh.name || sh.id.slice(0, 8)) + '</b> <span class="pr-conf">' + (sh.rows || 0) + ' 行 · 字段 ' + ((sh.fields || []).length) + ' 个' +
+        (sh.bound ? ' · ⚠ 已绑定项目「' + esc(sh.bound_project) + '」' : '') +
+        (sh.error ? ' · ❌ ' + esc(sh.error) : '') + '</span>';
+      var sm = el('div', 'pr-conf', '样例：' + esc(sampleTxt(sh)));
+      sm.style.marginTop = '6px'; card.appendChild(sm);
+      card.addEventListener('click', function() {
+        Array.prototype.forEach.call(stage.querySelectorAll('.pr-sheet'), function(x) { x.classList.remove('on'); });
+        card.classList.add('on');
+        picked = sh;
+        renderMap(stage, sh);
+      });
+      stage.appendChild(card);
+    });
+    var mapBox = el('div'); stage.appendChild(mapBox);
+    function renderMap(stage2, sh) {
+      mapBox.innerHTML = '';
+      if (sh.bound) { mapBox.innerHTML = ''; return; }
+      mapBox.appendChild(el('div', null, '③ 确认各列的含义（AI 预判，可改）')).style.cssText = 'font-size:13px;font-weight:700;color:#111827;margin-top:16px';
+      var roles = [['title', '任务名称 *'], ['user', '执行人 *'], ['status', '状态'], ['priority', '优先级'], ['due', '截止日期']];
+      var map = el('div', 'pr-map');
+      var sels = {};
+      roles.forEach(function(rr) {
+        map.appendChild(el('label', null, rr[1]));
+        var sel = el('select'); sel.style.cssText = 'border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px';
+        sel.appendChild(el('option', null, '（不使用）')).value = '';
+        (sh.fields || []).forEach(function(f) {
+          var o = el('option', null, f); o.value = f; sel.appendChild(o);
+        });
+        var pre = (sh.roles || {})[rr[0]];
+        if (pre && pre.field) sel.value = pre.field;
+        if (sel.selectedIndex < 0) sel.selectedIndex = 0;
+        sels[rr[0]] = sel;
+        map.appendChild(sel);
+      });
+      mapBox.appendChild(map);
+      var nameRow = el('div', 'pr-map');
+      nameRow.appendChild(el('label', null, '项目名称'));
+      var nameIn = el('input'); nameIn.type = 'text'; nameIn.value = sh.name || '';
+      nameIn.style.cssText = 'border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px';
+      nameRow.appendChild(nameIn);
+      mapBox.appendChild(nameRow);
+      var acts = el('div', 'wb-actions');
+      var btnC = el('button', 'btn-mini primary', '创建项目');
+      btnC.style.padding = '8px 16px';
+      btnC.addEventListener('click', function() {
+        var fm = {};
+        Object.keys(sels).forEach(function(k) { if (sels[k].value) fm[k] = sels[k].value; });
+        if (!fm.title || !fm.user) { alert('「任务名称」和「执行人」两列必须指定 —— 否则任务无法按人归属'); return; }
+        btnC.disabled = true; btnC.textContent = '创建中…';
+        req('/api/projects', { name: nameIn.value, baseId: ANALYZE.base_id, sheetId: sh.id,
+          sheetName: sh.name, url: ANALYZE.url, fieldMap: fm }).then(function(d2) {
+          btnC.disabled = false; btnC.textContent = '创建项目';
+          if (d2.error) { alert(d2.error); return; }
+          box.close();
+          loadList();
+          alert('项目已创建 ✓\n首轮任务将在 30 分钟内自动同步进来（同步期间不打扰任何人）。');
+        });
+      });
+      acts.appendChild(btnC);
+      mapBox.appendChild(acts);
+    }
+  }
+  function sampleTxt(sh) {
+    var s0 = (sh.sample || [])[0] || {};
+    return Object.keys(s0).slice(0, 5).map(function(k) { return k + '=' + s0[k]; }).join(' · ') || '—';
+  }
+
+  var btn = document.getElementById('pr-import-btn');
+  if (btn) btn.addEventListener('click', openImport);
+  window.addEventListener('hashchange', function() {
+    if (location.hash.replace('#/', '') === 'projects') loadList();
+  });
+  if (location.hash.replace('#/', '') === 'projects') loadList();
+})();
+} catch (_e) { console.error("[module] 项目管理初始化失败:", _e); }
 
 /* ---- 数据看板：按周/月多维统计 ---- */
 try {
